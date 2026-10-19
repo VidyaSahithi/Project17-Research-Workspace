@@ -1,6 +1,9 @@
 
 const { extractTextFromPDF } = require("../services/pdfExtractor");
+const { extractTextFromTXT } = require("../services/txtExtractor");
+const { chunkText } = require("../services/textChunker");
 const Document = require("../models/Document");
+const path = require("path");
 
 async function uploadDocument(req, res) {
     let document;
@@ -8,48 +11,80 @@ async function uploadDocument(req, res) {
     try {
         if (!req.file) {
             return res.status(400).json({
-                message: "No PDF file uploaded"
+                message: "No file uploaded"
             });
         }
 
-        // Create a document record in MongoDB
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({
+                message: "Authentication required"
+            });
+        }
+
+        const extension = path.extname(req.file.originalname).toLowerCase();
+
+        if (![".pdf", ".txt"].includes(extension)) {
+            return res.status(400).json({
+                message: "Only PDF and TXT files are supported"
+            });
+        }
+
         document = await Document.create({
             title: req.file.originalname,
             filePath: req.file.path,
             extractedText: "",
+            ownerId: req.user.id,
             status: "PROCESSING"
         });
 
-        // Extract text from the uploaded PDF
-        const extractedText = await extractTextFromPDF(req.file.path);
+        let extractedText;
 
-        // Save extracted text and update status
-        document.extractedText = extractedText;
-        document.status = "COMPLETED";
-        await document.save();
+        if (extension === ".pdf") {
+            extractedText = await extractTextFromPDF(req.file.path);
+        } else {
+            extractedText = await extractTextFromTXT(req.file.path);
+        }
 
+       const chunks = chunkText(extractedText);
+
+document.extractedText = extractedText;
+document.chunks = chunks;
+document.status = "COMPLETED";
+
+const chunks = chunkText(extractedText);
+
+document.extractedText = extractedText;
+document.chunks = chunks;
+document.status = "COMPLETED";
+
+await document.save();
+
+await document.save();
         return res.status(201).json({
-            message: "PDF uploaded, extracted, and saved successfully",
+            message: "Document uploaded, extracted, and saved successfully",
             documentId: document._id,
             fileName: req.file.originalname,
-            filePath: req.file.path,
+            ownerId: document.ownerId,
             status: document.status,
-            extractedText: extractedText
+            extractedText
         });
 
     } catch (error) {
         console.error("Document upload error:", error);
 
-        // Mark the record as failed if it was created
         if (document) {
             document.status = "FAILED";
+
             await document.save().catch(saveError => {
-                console.error("Failed to update document status:", saveError);
+                console.error(
+                    "Failed to update document status:",
+                    saveError
+                );
             });
         }
 
         return res.status(500).json({
-            message: "Failed to process PDF"
+            message: "Failed to process document"
         });
     }
 }

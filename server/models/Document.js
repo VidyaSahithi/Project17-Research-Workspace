@@ -1,3 +1,4 @@
+
 const mongoose = require("mongoose");
 
 const documentSchema = new mongoose.Schema(
@@ -15,6 +16,37 @@ const documentSchema = new mongoose.Schema(
         extractedText: {
             type: String,
             default: ""
+        },
+        
+        chunks: {
+            type: [
+                {
+                    chunkIndex: {
+                        type: Number,
+                        required: true
+                    },
+                    text: {
+                        type: String,
+                        required: true
+                    },
+                    startIndex: {
+                        type: Number,
+                        required: true
+                    },
+                    endIndex: {
+                        type: Number,
+                        required: true
+                    }
+                }
+            ],
+            default: []
+        },
+
+
+        ownerId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true
         },
 
         status: {
