@@ -51,14 +51,6 @@ document.extractedText = extractedText;
 document.chunks = chunks;
 document.status = "COMPLETED";
 
-const chunks = chunkText(extractedText);
-
-document.extractedText = extractedText;
-document.chunks = chunks;
-document.status = "COMPLETED";
-
-await document.save();
-
 await document.save();
         return res.status(201).json({
             message: "Document uploaded, extracted, and saved successfully",
