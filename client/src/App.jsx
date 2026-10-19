@@ -8,8 +8,10 @@ import {
 } from "react-router-dom";
 
 import AppLayout from "./layout/AppLayout";
+import Documents from "./pages/Documents";
 import "./App.css";
 
+// Dashboard page
 function Dashboard() {
   return (
     <div>
@@ -20,6 +22,7 @@ function Dashboard() {
           Organize research papers, explore evidence, and manage
           your reading in one place.
         </p>
+
         <Link to="/documents" className="primary-button">
           Explore documents →
         </Link>
@@ -53,6 +56,7 @@ function Dashboard() {
           Upload a research paper to begin building your
           personal research library.
         </p>
+
         <Link to="/documents" className="text-link">
           Go to Document Library →
         </Link>
@@ -61,40 +65,13 @@ function Dashboard() {
   );
 }
 
-function Documents() {
-  return (
-    <div className="content-card">
-      <div className="card-heading">
-        <div>
-          <h2>My Research Papers</h2>
-          <p>Manage and search your research documents.</p>
-        </div>
-        <button
-          className="primary-button"
-          onClick={() =>
-            alert("Upload functionality will be added next.")
-          }
-        >
-          + Upload Paper
-        </button>
-      </div>
-
-      <div className="empty-state">
-        <div className="empty-icon">▤</div>
-        <h3>Your library is ready</h3>
-        <p>
-          Your documents will appear here after you upload them.
-        </p>
-      </div>
-    </div>
-  );
-}
-
+// Collections page
 function Collections() {
   return (
     <div className="content-card">
       <h2>Collections</h2>
       <p>Group and organize your research papers.</p>
+
       <div className="empty-state">
         <h3>No collections yet</h3>
         <p>Your research collections will appear here.</p>
@@ -103,88 +80,116 @@ function Collections() {
   );
 }
 
+// Login page
 function Login() {
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    alert(
+      "This is a demo form. Backend authentication has not been connected yet."
+    );
+  }
+
   return (
     <div className="auth-page">
-      <form
-        className="auth-card"
-        onSubmit={(event) => {
-          event.preventDefault();
-          alert("Authentication will be connected to the backend later.");
-        }}
-      >
+      <form className="auth-card" onSubmit={handleSubmit}>
         <div className="brand-icon auth-logo">R</div>
+
         <h1>Welcome back</h1>
         <p>Sign in to your research workspace.</p>
 
         <label htmlFor="login-email">Email address</label>
         <input
           id="login-email"
+          name="email"
           type="email"
           placeholder="you@example.com"
+          autoComplete="email"
           required
         />
 
         <label htmlFor="login-password">Password</label>
         <input
           id="login-password"
+          name="password"
           type="password"
           placeholder="Enter your password"
+          autoComplete="current-password"
           required
         />
 
-        <button type="submit" className="primary-button full-width">
+        <button
+          type="submit"
+          className="primary-button full-width"
+        >
           Sign in
         </button>
 
         <p className="auth-switch">
           New here? <Link to="/register">Create an account</Link>
         </p>
+
+        <p>
+          <Link to="/dashboard">Return to dashboard</Link>
+        </p>
       </form>
     </div>
   );
 }
 
+// Registration page
 function Register() {
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    alert(
+      "This is a demo form. Backend registration has not been connected yet."
+    );
+  }
+
   return (
     <div className="auth-page">
-      <form
-        className="auth-card"
-        onSubmit={(event) => {
-          event.preventDefault();
-          alert("Registration will be connected to the backend later.");
-        }}
-      >
+      <form className="auth-card" onSubmit={handleSubmit}>
         <div className="brand-icon auth-logo">R</div>
+
         <h1>Create your account</h1>
         <p>Start organizing your research.</p>
 
         <label htmlFor="register-name">Full name</label>
         <input
           id="register-name"
+          name="name"
           type="text"
           placeholder="Your name"
+          autoComplete="name"
           required
         />
 
         <label htmlFor="register-email">Email address</label>
         <input
           id="register-email"
+          name="email"
           type="email"
           placeholder="you@example.com"
+          autoComplete="email"
           required
         />
 
         <label htmlFor="register-password">Password</label>
         <input
           id="register-password"
+          name="password"
           type="password"
           minLength={8}
           placeholder="At least 8 characters"
+          autoComplete="new-password"
           required
         />
 
-        <button type="submit" className="primary-button full-width">
+        <button
+          type="submit"
+          className="primary-button full-width"
+        >
           Create account
         </button>
 
@@ -196,12 +201,14 @@ function Register() {
   );
 }
 
+// Placeholder for pages being developed by other team members
 function PlaceholderPage({ title, description }) {
   return (
     <div className="content-card">
       <p className="eyebrow">PROJECT 17 WORKSPACE</p>
       <h2>{title}</h2>
       <p>{description}</p>
+
       <div className="coming-soon">
         This page is ready for integration.
       </div>
@@ -209,10 +216,13 @@ function PlaceholderPage({ title, description }) {
   );
 }
 
+// 404 page
 function NotFound() {
   return (
     <div className="content-card">
       <h2>Page not found</h2>
+      <p>The page you requested does not exist.</p>
+
       <Link to="/dashboard" className="text-link">
         Return to dashboard
       </Link>
@@ -220,20 +230,39 @@ function NotFound() {
   );
 }
 
+// Main application and routes
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* Default route */}
+        <Route
+          path="/"
+          element={<Navigate to="/dashboard" replace />}
+        />
 
+        {/* Public authentication routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
+        {/* Shared application layout */}
         <Route element={<AppLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/documents" element={<Documents />} />
-          <Route path="/collections" element={<Collections />} />
+          <Route
+            path="/dashboard"
+            element={<Dashboard />}
+          />
 
+          <Route
+            path="/documents"
+            element={<Documents />}
+          />
+
+          <Route
+            path="/collections"
+            element={<Collections />}
+          />
+
+          {/* M6 - Research Chat */}
           <Route
             path="/chat"
             element={
@@ -244,6 +273,7 @@ export default function App() {
             }
           />
 
+          {/* M7 - Evidence Board */}
           <Route
             path="/evidence"
             element={
@@ -254,6 +284,7 @@ export default function App() {
             }
           />
 
+          {/* M8 - Study Comparison */}
           <Route
             path="/compare"
             element={
@@ -264,6 +295,7 @@ export default function App() {
             }
           />
 
+          {/* M8 - Private Notes */}
           <Route
             path="/notes"
             element={
@@ -275,6 +307,7 @@ export default function App() {
           />
         </Route>
 
+        {/* Unknown routes */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
