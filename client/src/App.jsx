@@ -1,15 +1,23 @@
 
 import {
+  login,
+  register,
+  isAuthenticated,
+} from "./services/authApi";
+
+import {
   BrowserRouter,
   Routes,
   Route,
   Navigate,
   Link,
+  useNavigate,
 } from "react-router-dom";
 
 import AppLayout from "./layout/AppLayout";
 import Documents from "./pages/Documents";
 import "./App.css";
+
 
 // Dashboard page
 function Dashboard() {
@@ -80,14 +88,26 @@ function Collections() {
   );
 }
 
-// Login page
+
+
+
+ // Login page
 function Login() {
-  function handleSubmit(event) {
+  const navigate = useNavigate();
+
+  async function handleSubmit(event) {
     event.preventDefault();
 
-    alert(
-      "This is a demo form. Backend authentication has not been connected yet."
-    );
+    const formData = new FormData(event.currentTarget);
+    const email = formData.get("email");
+    const password = formData.get("password");
+
+    try {
+      await login({ email, password });
+      navigate("/dashboard");
+    } catch (error) {
+      alert(error.message || "Login failed. Please try again.");
+    }
   }
 
   return (
@@ -137,14 +157,25 @@ function Login() {
   );
 }
 
-// Registration page
+
+ // Registration page
 function Register() {
-  function handleSubmit(event) {
+  const navigate = useNavigate();
+
+  async function handleSubmit(event) {
     event.preventDefault();
 
-    alert(
-      "This is a demo form. Backend registration has not been connected yet."
-    );
+    const formData = new FormData(event.currentTarget);
+    const name = formData.get("name");
+    const email = formData.get("email");
+    const password = formData.get("password");
+
+    try {
+      await register({ name, email, password });
+      navigate("/dashboard");
+    } catch (error) {
+      alert(error.message || "Registration failed. Please try again.");
+    }
   }
 
   return (
@@ -201,6 +232,7 @@ function Register() {
   );
 }
 
+
 // Placeholder for pages being developed by other team members
 function PlaceholderPage({ title, description }) {
   return (
@@ -229,7 +261,13 @@ function NotFound() {
     </div>
   );
 }
+function RequireAuth({ children }) {
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
 
+  return children;
+}
 // Main application and routes
 export default function App() {
   return (
@@ -246,7 +284,13 @@ export default function App() {
         <Route path="/register" element={<Register />} />
 
         {/* Shared application layout */}
-        <Route element={<AppLayout />}>
+        <Route
+  element={
+    <RequireAuth>
+      <AppLayout />
+    </RequireAuth>
+  }
+>
           <Route
             path="/dashboard"
             element={<Dashboard />}
