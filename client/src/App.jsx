@@ -1,4 +1,11 @@
-
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  login,
+  register,
+  isAuthenticated,
+  getCurrentUser,
+} from "./services/authApi";
 import {
   BrowserRouter,
   Routes,
@@ -81,13 +88,31 @@ function Collections() {
 }
 
 // Login page
-function Login() {
-  function handleSubmit(event) {
-    event.preventDefault();
 
-    alert(
-      "This is a demo form. Backend authentication has not been connected yet."
-    );
+function Login() {
+  const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+
+    const formData = new FormData(event.currentTarget);
+
+    try {
+      await login({
+        email: formData.get("email"),
+        password: formData.get("password"),
+      });
+
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setError(err.message || "Unable to sign in. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -118,11 +143,14 @@ function Login() {
           required
         />
 
+        {error && <p role="alert">{error}</p>}
+
         <button
           type="submit"
           className="primary-button full-width"
+          disabled={loading}
         >
-          Sign in
+          {loading ? "Signing in..." : "Sign in"}
         </button>
 
         <p className="auth-switch">
@@ -137,14 +165,34 @@ function Login() {
   );
 }
 
-// Registration page
-function Register() {
-  function handleSubmit(event) {
-    event.preventDefault();
 
-    alert(
-      "This is a demo form. Backend registration has not been connected yet."
-    );
+// Registration page
+
+function Register() {
+  const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError("");
+    setLoading(true);
+
+    const formData = new FormData(event.currentTarget);
+
+    try {
+      await register({
+        name: formData.get("name"),
+        email: formData.get("email"),
+        password: formData.get("password"),
+      });
+
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setError(err.message || "Unable to register. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -186,11 +234,14 @@ function Register() {
           required
         />
 
+        {error && <p role="alert">{error}</p>}
+
         <button
           type="submit"
           className="primary-button full-width"
+          disabled={loading}
         >
-          Create account
+          {loading ? "Creating account..." : "Create account"}
         </button>
 
         <p className="auth-switch">
@@ -200,6 +251,7 @@ function Register() {
     </div>
   );
 }
+
 
 // Placeholder for pages being developed by other team members
 function PlaceholderPage({ title, description }) {
@@ -229,7 +281,65 @@ function NotFound() {
     </div>
   );
 }
+// Protect all routes inside the shared application layout.
+function ProtectedLayout() {
+  const [status, setStatus] = useState(() =>
+    isAuthenticated() ? "checking" : "signed-out"
+  );
 
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    if (!isAuthenticated()) {
+      return () => {
+        active = false;
+      };
+    }
+
+    getCurrentUser()
+      .then((user) => {
+        if (active) {
+          setStatus(user ? "authenticated" : "signed-out");
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(
+            err.message || "Unable to verify your session."
+          );
+          setStatus("error");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (status === "checking") {
+    return <p>Checking your session...</p>;
+  }
+
+  if (status === "signed-out") {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (status === "error") {
+    return (
+      <div className="content-card" role="alert">
+        <h2>Unable to verify your session</h2>
+        <p>{error}</p>
+        <button onClick={() => window.location.reload()}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  return <AppLayout />;
+}
 // Main application and routes
 export default function App() {
   return (
@@ -246,7 +356,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
 
         {/* Shared application layout */}
-        <Route element={<AppLayout />}>
+        <Route element={<ProtectedLayout />}>
           <Route
             path="/dashboard"
             element={<Dashboard />}
