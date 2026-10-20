@@ -1,4 +1,4 @@
-
+import Chat from "./pages/Chat";
 import {
   BrowserRouter,
   Routes,
@@ -264,14 +264,9 @@ export default function App() {
 
           {/* M6 - Research Chat */}
           <Route
-            path="/chat"
-            element={
-              <PlaceholderPage
-                title="Research Chat"
-                description="Chat with your research documents."
-              />
-            }
-          />
+  path="/chat"
+  element={<Chat />}
+/>
 
           {/* M7 - Evidence Board */}
           <Route
