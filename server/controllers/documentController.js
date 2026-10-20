@@ -3,30 +3,22 @@ const { extractTextFromPDF } = require("../services/pdfExtractor");
 const { extractTextFromTXT } = require("../services/txtExtractor");
 const { chunkText } = require("../services/textChunker");
 const Document = require("../models/Document");
+const { processDocument } = require("../services/processDocument");
 const path = require("path");
 
 async function uploadDocument(req, res) {
     let document;
 
     try {
-        // 1. Check whether a file was uploaded
         if (!req.file) {
-            return res.status(400).json({
-                message: "No file uploaded"
-            });
+            return res.status(400).json({ message: "No file uploaded" });
         }
 
-        // 2. Check authentication
         if (!req.user || !req.user.id) {
-            return res.status(401).json({
-                message: "Authentication required"
-            });
+            return res.status(401).json({ message: "Authentication required" });
         }
 
-        // 3. Validate file extension
-        const extension = path.extname(
-            req.file.originalname
-        ).toLowerCase();
+        const extension = path.extname(req.file.originalname).toLowerCase();
 
         if (![".pdf", ".txt"].includes(extension)) {
             return res.status(400).json({
@@ -34,7 +26,6 @@ async function uploadDocument(req, res) {
             });
         }
 
-        // 4. Create document with PROCESSING status
         document = await Document.create({
             title: req.file.originalname,
             filePath: req.file.path,
@@ -43,61 +34,56 @@ async function uploadDocument(req, res) {
             status: "PROCESSING"
         });
 
-        // 5. Extract text from the uploaded file
         let extractedText;
 
         if (extension === ".pdf") {
-            extractedText = await extractTextFromPDF(
-                req.file.path
-            );
+            extractedText = await extractTextFromPDF(req.file.path);
         } else {
-            extractedText = await extractTextFromTXT(
-                req.file.path
-            );
+            extractedText = await extractTextFromTXT(req.file.path);
         }
 
-        // 6. Check whether extracted text is empty
-        if (
-            typeof extractedText !== "string" ||
-            !extractedText.trim()
-        ) {
-            throw new Error(
-                "No readable text found in the uploaded file"
-            );
+        if (typeof extractedText !== "string" || !extractedText.trim()) {
+            throw new Error("No readable text found in the uploaded file");
         }
 
-        // 7. Split extracted text into chunks
-        const chunks = chunkText(extractedText);
-
-        // 8. Save extracted text and chunks to MongoDB
+        // M2: Save extracted text and application-level chunks.
         document.extractedText = extractedText;
-        document.chunks = chunks;
-        document.status = "COMPLETED";
-
+        document.chunks = chunkText(extractedText);
         await document.save();
 
-        // 9. Send successful response
+        // M3: Generate embeddings and store searchable Chunk records.
+        await processDocument({
+            documentId: document._id,
+            ownerId: document.ownerId,
+            pages: [
+                {
+                    text: extractedText,
+                    page: null,
+                    section: null
+                }
+            ]
+        });
+
+        // Mark complete only after both processing steps succeed.
+        document.status = "COMPLETED";
+        await document.save();
+
         return res.status(201).json({
-            message: "Document uploaded, extracted, and saved successfully",
+            message: "Document uploaded, extracted, and processed successfully",
             documentId: document._id,
             fileName: req.file.originalname,
             ownerId: document.ownerId,
             status: document.status,
             extractedText
         });
-
     } catch (error) {
         console.error("Document upload error:", error);
 
-        // 10. Mark the document as FAILED if processing fails
         if (document) {
             document.status = "FAILED";
 
             await document.save().catch(saveError => {
-                console.error(
-                    "Failed to update document status:",
-                    saveError
-                );
+                console.error("Failed to update document status:", saveError);
             });
         }
 
@@ -107,6 +93,4 @@ async function uploadDocument(req, res) {
     }
 }
 
-module.exports = {
-    uploadDocument
-};
+module.exports = { uploadDocument };
