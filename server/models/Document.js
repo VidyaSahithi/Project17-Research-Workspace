@@ -18,6 +18,7 @@ const documentSchema = new mongoose.Schema(
             default: ""
         },
 
+        // M2: Chunks used by document-level features.
         chunks: {
             type: [
                 {
@@ -41,7 +42,6 @@ const documentSchema = new mongoose.Schema(
             ],
             default: []
         },
-
 
         ownerId: {
             type: mongoose.Schema.Types.ObjectId,
