@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import agentRoutes from "./routes/agent.js";
+import chatRoutes from './routes/chat.js';
 
 dotenv.config();
 
@@ -12,6 +13,7 @@ app.use(cors());
 
 // Mount the route
 app.use("/api", agentRoutes);
+app.use('/api', chatRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "Member 4 AI server running smoothly! 🚀" });
