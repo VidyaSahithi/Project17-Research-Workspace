@@ -32,11 +32,15 @@ export function getAuthHeaders() {
 
 function saveAuthSession(data) {
   if (!data?.token || !data?.user) {
-    throw new Error("The server returned an invalid authentication response.");
+    throw new Error(
+      "The server returned an invalid authentication response."
+    );
   }
 
   sessionStorage.setItem(TOKEN_KEY, data.token);
   sessionStorage.setItem(USER_KEY, JSON.stringify(data.user));
+
+  window.dispatchEvent(new Event("auth-change"));
 
   return data;
 }
@@ -62,8 +66,45 @@ export async function login({ email, password }) {
 export function logout() {
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(USER_KEY);
+
+  window.dispatchEvent(new Event("auth-change"));
 }
 
 export function isAuthenticated() {
   return Boolean(getToken());
+}
+export async function getCurrentUser() {
+  if (!getToken()) {
+    return null;
+  }
+
+  try {
+   const data = await apiRequest("/api/auth/me", {
+  method: "GET",
+  headers: getAuthHeaders(),
+  cache: "no-store",
+});
+
+    if (!data?.user) {
+      throw new Error(
+        "The server returned an invalid session response."
+      );
+    }
+
+    sessionStorage.setItem(
+      USER_KEY,
+      JSON.stringify(data.user)
+    );
+
+    window.dispatchEvent(new Event("auth-change"));
+
+    return data.user;
+  } catch (error) {
+    if (error?.status === 401) {
+      logout();
+      return null;
+    }
+
+    throw error;
+  }
 }
