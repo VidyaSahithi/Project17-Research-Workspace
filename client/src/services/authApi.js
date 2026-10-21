@@ -1,5 +1,5 @@
 
-import { apiRequest } from "./api";
+import { apiRequest, USE_MOCK } from "./api";
 
 const TOKEN_KEY = "project17_auth_token";
 const USER_KEY = "project17_auth_user";
@@ -46,6 +46,17 @@ function saveAuthSession(data) {
 }
 
 export async function register({ name, email, password }) {
+  if (USE_MOCK) {
+    return saveAuthSession({
+      token: "mock_jwt_token_" + Date.now(),
+      user: {
+        id: "student_user",
+        name: name || "Alex Rivera",
+        email: email || "student@researchspace.internal",
+      },
+    });
+  }
+
   const data = await apiRequest("/api/auth/register", {
     method: "POST",
     body: { name, email, password },
@@ -55,6 +66,17 @@ export async function register({ name, email, password }) {
 }
 
 export async function login({ email, password }) {
+  if (USE_MOCK) {
+    return saveAuthSession({
+      token: "mock_jwt_token_" + Date.now(),
+      user: {
+        id: "student_user",
+        name: "Alex Rivera",
+        email: email || "student@researchspace.internal",
+      },
+    });
+  }
+
   const data = await apiRequest("/api/auth/login", {
     method: "POST",
     body: { email, password },
@@ -78,12 +100,22 @@ export async function getCurrentUser() {
     return null;
   }
 
+  if (USE_MOCK || getToken()?.startsWith("mock_jwt_token")) {
+    const stored = getStoredUser();
+    if (stored) return stored;
+    return {
+      id: "student_user",
+      name: "Alex Rivera",
+      email: "student@researchspace.internal",
+    };
+  }
+
   try {
-   const data = await apiRequest("/api/auth/me", {
-  method: "GET",
-  headers: getAuthHeaders(),
-  cache: "no-store",
-});
+    const data = await apiRequest("/api/auth/me", {
+      method: "GET",
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    });
 
     if (!data?.user) {
       throw new Error(
