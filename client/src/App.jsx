@@ -17,6 +17,7 @@ import {
 
 import AppLayout from "./layout/AppLayout";
 import Documents from "./pages/Documents";
+import EvidenceBoard from "./pages/EvidenceBoard";
 import Chat from "./pages/Chat";
 import "./App.css";
 
@@ -366,12 +367,7 @@ export default function App() {
           {/* M7 - Evidence Board */}
           <Route
             path="/evidence"
-            element={
-              <PlaceholderPage
-                title="Evidence Board"
-                description="Collect evidence and organize reviewer comments."
-              />
-            }
+            element={<EvidenceBoard />}
           />
 
           {/* M8 - Study Comparison */}
