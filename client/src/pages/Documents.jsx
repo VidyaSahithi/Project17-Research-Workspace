@@ -1,19 +1,80 @@
 
-import { useState } from "react";
-import { initialDocuments } from "../mocks/documentsMock";
+import { useEffect, useState } from "react";
 import DocumentCard from "../components/library/DocumentCard";
 import UploadButton from "../components/library/UploadButton";
 import SearchBar from "../components/library/SearchBar";
+import {
+  listDocuments,
+  uploadDocument,
+  getDocumentFileUrl,
+} from "../services/documentsApi";
 import "./Documents.css";
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
+
+function mapDocument(doc) {
+  const filename = doc.filename || doc.fileName || doc.title || "document.txt";
+  const rawStatus = String(doc.status || "").toUpperCase();
+
+  let status = "processing";
+
+  if (["COMPLETED", "READY"].includes(rawStatus)) {
+    status = "ready";
+  } else if (rawStatus === "FAILED") {
+    status = "failed";
+  }
+
+  return {
+    id: doc.id || doc.documentId || doc._id,
+    title: filename.replace(/\.(pdf|txt)$/i, ""),
+    filename,
+    pages: null,
+    size: doc.size || null,
+    status,
+    serverBacked: true,
+  };
+}
 
 export default function Documents() {
-  const [documents, setDocuments] = useState(initialDocuments);
+  const [documents, setDocuments] = useState([]);
   const [search, setSearch] = useState("");
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [openingId, setOpeningId] = useState(null);
+
+  async function refreshDocuments() {
+    const result = await listDocuments();
+    setDocuments((result.documents || []).map(mapDocument));
+  }
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadDocuments() {
+      try {
+        const result = await listDocuments();
+
+        if (active) {
+          setDocuments((result.documents || []).map(mapDocument));
+        }
+      } catch (error) {
+        if (active) {
+          setUploadError(`Could not load documents: ${error.message}`);
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadDocuments();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleFileSelected(file) {
     setUploadError("");
@@ -21,80 +82,85 @@ export default function Documents() {
     const extension = file.name.split(".").pop()?.toLowerCase();
 
     if (!["pdf", "txt"].includes(extension)) {
-      setUploadError("Unsupported file type. Please select a PDF or TXT file.");
+      setUploadError("Please select a PDF or TXT file.");
       return;
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      setUploadError("File exceeds the 20 MB limit. Please choose a smaller file.");
+      setUploadError("File exceeds the 20 MB limit.");
       return;
     }
 
     if (file.size === 0) {
-      setUploadError("This file is empty. Please choose another file.");
+      setUploadError("The selected file is empty.");
       return;
     }
 
     setUploading(true);
-    setUploadProgress(0);
 
-    // Simulate uploading while using mock mode.
-    for (const progress of [15, 35, 55, 75, 100]) {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      setUploadProgress(progress);
+    try {
+      const result = await uploadDocument(file);
+
+      await refreshDocuments();
+
+      if (String(result.status || "").toUpperCase() !== "COMPLETED") {
+        setUploadError(
+          "The upload request finished, but document processing is not complete."
+        );
+      }
+    } catch (error) {
+      setUploadError(`Upload failed: ${error.message}`);
+
+      // Refresh in case the backend saved the document before processing failed.
+      try {
+        await refreshDocuments();
+      } catch {
+        // Keep the original upload error visible.
+      }
+    } finally {
+      setUploading(false);
     }
-
-    const newId = `doc-${Date.now()}`;
-    const newDocument = {
-      id: newId,
-      title: file.name.replace(/\.(pdf|txt)$/i, ""),
-      filename: file.name,
-      pages: null,
-      size: file.size,
-      status: "processing",
-    };
-
-    setDocuments((current) => [newDocument, ...current]);
-    setUploading(false);
-    setUploadProgress(0);
-
-    // Mock processing only; no server request is made yet.
-    setTimeout(() => {
-      setDocuments((current) =>
-        current.map((doc) =>
-          doc.id === newId ? { ...doc, status: "ready" } : doc
-        )
-      );
-    }, 4000);
   }
 
-  function handleRetry(id) {
-    setDocuments((current) =>
-      current.map((doc) =>
-        doc.id === id
-          ? { ...doc, status: "processing", error: undefined }
-          : doc
-      )
+  async function handleOpen(document) {
+    setUploadError("");
+    setOpeningId(document.id);
+
+    // Open a tab directly from the user's click to reduce popup blocking.
+    const tab = window.open("about:blank", "_blank");
+
+    try {
+      const url = await getDocumentFileUrl(document.id);
+
+      if (tab && !tab.closed) {
+        tab.location.href = url;
+      } else {
+        window.location.href = url;
+      }
+    } catch (error) {
+      if (tab && !tab.closed) {
+        tab.close();
+      }
+
+      setUploadError(`Could not open document: ${error.message}`);
+    } finally {
+      setOpeningId(null);
+    }
+  }
+
+  function handleRetry() {
+    setUploadError(
+      "Retry processing is not implemented yet. Check the backend error before uploading again."
     );
-
-    // Simulate a successful retry in mock mode.
-    setTimeout(() => {
-      setDocuments((current) =>
-        current.map((doc) =>
-          doc.id === id ? { ...doc, status: "ready" } : doc
-        )
-      );
-    }, 2500);
   }
 
-  const filteredDocuments = documents.filter((doc) => {
-    const query = search.trim().toLowerCase();
+  const query = search.trim().toLowerCase();
 
-    return (
+  const filteredDocuments = documents.filter(
+    (doc) =>
       doc.title.toLowerCase().includes(query) ||
       doc.filename.toLowerCase().includes(query)
-    );
-  });
+  );
 
   return (
     <section className="documents-page">
@@ -102,7 +168,7 @@ export default function Documents() {
         <div>
           <p className="eyebrow">YOUR RESEARCH WORKSPACE</p>
           <h2>My Research Papers</h2>
-          <p>Manage, search, and organize your research documents.</p>
+          <p>Manage, search, and open your research documents.</p>
         </div>
 
         <UploadButton
@@ -113,6 +179,7 @@ export default function Documents() {
 
       <div className="library-toolbar">
         <SearchBar value={search} onChange={setSearch} />
+
         <span className="document-count">
           {filteredDocuments.length}{" "}
           {filteredDocuments.length === 1 ? "document" : "documents"}
@@ -120,26 +187,12 @@ export default function Documents() {
       </div>
 
       {uploading && (
-        <div className="upload-progress" role="status">
-          <div className="progress-label">
-            <span>Uploading document (demo)</span>
-            <span>{uploadProgress}%</span>
-          </div>
-
-          <div
-            className="progress-track"
-            role="progressbar"
-            aria-valuenow={uploadProgress}
-            aria-valuemin="0"
-            aria-valuemax="100"
-          >
-            <div
-              className="progress-fill"
-              style={{ width: `${uploadProgress}%` }}
-            />
-          </div>
-        </div>
+        <p role="status">
+          Uploading and processing document. Please wait…
+        </p>
       )}
+
+      {openingId && <p role="status">Opening document…</p>}
 
       {uploadError && (
         <p className="upload-error" role="alert">
@@ -147,36 +200,38 @@ export default function Documents() {
         </p>
       )}
 
-      <div className="document-list">
-        {filteredDocuments.map((document) => (
-          <DocumentCard
-            key={document.id}
-            document={document}
-            onRetry={handleRetry}
-          />
-        ))}
-      </div>
+      {loading ? (
+        <p>Loading your documents…</p>
+      ) : (
+        <>
+          <div className="document-list">
+            {filteredDocuments.map((document) => (
+              <DocumentCard
+                key={document.id}
+                document={document}
+                onRetry={handleRetry}
+                onOpen={handleOpen}
+              />
+            ))}
+          </div>
 
-      {filteredDocuments.length === 0 && (
-        <div className="library-empty-state">
-          {documents.length === 0 ? (
-            <>
-              <h3>Your library is empty</h3>
-              <p>Upload a PDF or TXT file to get started.</p>
-            </>
-          ) : (
-            <>
-              <h3>No matching documents</h3>
-              <p>Try a different search term.</p>
-            </>
+          {filteredDocuments.length === 0 && (
+            <div className="library-empty-state">
+              <h3>
+                {documents.length === 0
+                  ? "Your library is empty"
+                  : "No matching documents"}
+              </h3>
+
+              <p>
+                {documents.length === 0
+                  ? "Upload a PDF or TXT file to get started."
+                  : "Try a different search term."}
+              </p>
+            </div>
           )}
-        </div>
+        </>
       )}
-
-      <p className="mock-mode-note">
-        Demo mode: uploads and retries are simulated locally.
-        Files are not sent to the backend yet.
-      </p>
     </section>
   );
 }

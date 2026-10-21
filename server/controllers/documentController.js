@@ -48,6 +48,10 @@ async function uploadDocument(req, res) {
 
         // M2: Save extracted text and application-level chunks.
         document.extractedText = extractedText;
+        console.log(
+  "Extracted text preview:",
+  extractedText.slice(0, 500)
+);
         document.chunks = chunkText(extractedText);
         await document.save();
 

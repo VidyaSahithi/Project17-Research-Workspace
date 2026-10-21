@@ -1,9 +1,8 @@
 
-import { apiRequest } from "./api";
+import { apiRequest, API_BASE_URL } from "./api";
 import { getAuthHeaders } from "./authApi";
 
-// Confirm this path against the backend router before testing.
-const UPLOAD_ENDPOINT = "/upload";
+const DOCUMENTS_ENDPOINT = "/api/documents";
 
 export async function uploadDocument(file) {
   if (!(file instanceof File)) {
@@ -19,9 +18,37 @@ export async function uploadDocument(file) {
   const formData = new FormData();
   formData.append("file", file);
 
-  return apiRequest(UPLOAD_ENDPOINT, {
+  return apiRequest(`${DOCUMENTS_ENDPOINT}/upload`, {
     method: "POST",
     headers: getAuthHeaders(),
     body: formData,
   });
+}
+
+export async function listDocuments() {
+  return apiRequest(DOCUMENTS_ENDPOINT, {
+    headers: getAuthHeaders(),
+  });
+}
+
+export async function getDocumentFileUrl(id) {
+  const response = await fetch(
+    `${API_BASE_URL}${DOCUMENTS_ENDPOINT}/${encodeURIComponent(id)}/open`,
+    { headers: getAuthHeaders() }
+  );
+
+  if (!response.ok) {
+    let message = "Could not open document.";
+
+    try {
+      const data = await response.json();
+      message = data.message || message;
+    } catch {
+      // Keep the default message.
+    }
+
+    throw new Error(message);
+  }
+
+  return URL.createObjectURL(await response.blob());
 }

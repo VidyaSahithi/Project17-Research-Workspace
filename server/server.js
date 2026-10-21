@@ -4,16 +4,16 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
-
+const chatRoutes = require("./routes/chatRoute.cjs");
 const authRoutes = require("./routes/authRoutes");
 const searchRoutes = require("./routes/search");
 const documentRoutes = require("./routes/documents");
-
 const app = express();
 
 app.use(cors());
 app.use(express.json());
-
+app.use("/api", chatRoutes);
+console.log("CHAT ROUTE MOUNTED");
 app.use("/api/auth", authRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/documents", documentRoutes);

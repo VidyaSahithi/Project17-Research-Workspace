@@ -272,19 +272,153 @@ function Register() {
 }
 
 // Placeholder for pages being developed by other team members
+
 function PlaceholderPage({ title, description }) {
+  const [items, setItems] = useState([]);
+  const [input, setInput] = useState("");
+  const [answer, setAnswer] = useState("");
+
+  function handleAdd(event) {
+    event.preventDefault();
+    const value = input.trim();
+    if (!value) return;
+
+    setItems((previous) => [
+      ...previous,
+      {
+        id: Date.now(),
+        text: value,
+      },
+    ]);
+
+    setInput("");
+  }
+
+  const isChat = title === "Research Chat";
+  const isEvidence = title === "Evidence Board";
+  const isCompare = title === "Study Comparison";
+  const isNotes = title === "Private Notes";
+
   return (
-    <div className="content-card">
+    <section className="content-card workspace-tool">
       <p className="eyebrow">PROJECT 17 WORKSPACE</p>
       <h2>{title}</h2>
       <p>{description}</p>
 
-      <div className="coming-soon">
-        This page is ready for integration.
-      </div>
-    </div>
+      {isChat && (
+        <>
+          <div className="workspace-panel">
+            {answer ? (
+              <p>{answer}</p>
+            ) : (
+              <p>
+                Ask a research question. AI integration is the next step.
+              </p>
+            )}
+          </div>
+
+          <form onSubmit={(event) => {
+            event.preventDefault();
+            if (!input.trim()) return;
+            setAnswer(
+              "Your question: " + input.trim() +
+              ". Connect the evidence-agent API to generate a research answer with citations."
+            );
+            setInput("");
+          }}>
+            <label htmlFor="research-question">Your question</label>
+            <textarea
+              id="research-question"
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder="Ask about your research..."
+              rows={3}
+              required
+            />
+            <button className="primary-button" type="submit">
+              Submit question
+            </button>
+          </form>
+        </>
+      )}
+
+      {(isEvidence || isNotes || isCompare) && (
+        <>
+          <form onSubmit={handleAdd} className="workspace-form">
+            <label htmlFor="workspace-entry">
+              {isEvidence
+                ? "Evidence statement"
+                : isNotes
+                  ? "Research note"
+                  : "Study details"}
+            </label>
+
+            <textarea
+              id="workspace-entry"
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              placeholder={
+                isEvidence
+                  ? "Record a finding or supporting evidence..."
+                  : isNotes
+                    ? "Write your research notes..."
+                    : "Enter a study title, method, or finding..."
+              }
+              rows={3}
+              required
+            />
+
+            <button className="primary-button" type="submit">
+              {isEvidence
+                ? "Add evidence"
+                : isNotes
+                  ? "Save note"
+                  : "Add study"}
+            </button>
+          </form>
+
+          <div className="workspace-entries">
+            <h3>
+              {isEvidence
+                ? "Evidence entries"
+                : isNotes
+                  ? "Your notes"
+                  : "Studies to compare"}
+            </h3>
+
+            {items.length === 0 ? (
+              <p>Your entries will appear here.</p>
+            ) : (
+              items.map((item, index) => (
+                <article className="workspace-panel" key={item.id}>
+                  <p>{isCompare ? `Study ${index + 1}` : `Entry ${index + 1}`}</p>
+                  <p>{item.text}</p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setItems((previous) =>
+                        previous.filter((entry) => entry.id !== item.id)
+                      )
+                    }
+                  >
+                    Remove
+                  </button>
+                </article>
+              ))
+            )}
+
+            {isCompare && items.length >= 2 && (
+              <p>
+                Both study entries are available above for side-by-side review.
+              </p>
+            )}
+          </div>
+        </>
+      )}
+    </section>
   );
 }
+
 
 // 404 page
 function NotFound() {
