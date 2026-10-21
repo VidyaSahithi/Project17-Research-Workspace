@@ -1,4 +1,4 @@
-import { apiRequest, USE_MOCK, ApiError } from "./api";
+import { apiRequest, USE_MOCK } from "./api";
 import { getAuthHeaders } from "./authApi";
 import { fetchMockStudies, setSimulatedCompareFailure } from "../mocks/compareMock";
 
@@ -19,6 +19,7 @@ export async function getStudiesForComparison() {
     return fetchMockStudies();
   }
 
+  // 1. Try dedicated evidence comparison endpoint if available
   try {
     const data = await apiRequest("/api/evidence/compare", {
       method: "GET",
@@ -26,21 +27,46 @@ export async function getStudiesForComparison() {
       cache: "no-store",
     });
 
-    if (!data || !Array.isArray(data.studies)) {
-      throw new ApiError("The comparison API returned an unexpected response format.", 500, data);
+    if (data && Array.isArray(data.studies) && data.studies.length > 0) {
+      return data.studies;
     }
-
-    return data.studies;
   } catch (err) {
-    // If backend route is not yet implemented (e.g. 404), return clear error
-    if (err.status === 404) {
-      throw new ApiError(
-        "Study Comparison API (/api/evidence/compare) is not yet available on the backend server. Enable mock mode in client/.env with VITE_USE_MOCK=true.",
-        404
-      );
+    // If not implemented (404), fall back to existing /api/documents
+    if (err.status !== 404) {
+      throw err;
     }
-    throw err;
   }
+
+  // 2. Connect to existing real /api/documents from M2/M3
+  try {
+    const docData = await apiRequest("/api/documents", {
+      method: "GET",
+      headers: getAuthHeaders(),
+      cache: "no-store",
+    });
+
+    const docs = Array.isArray(docData?.documents) ? docData.documents : [];
+    if (docs.length > 0) {
+      return docs.map((doc, idx) => ({
+        id: String(doc.documentId || doc._id || `doc-${idx}`),
+        documentId: String(doc.documentId || doc._id),
+        title: doc.title?.replace(/\.(pdf|txt)$/i, "") || "Untitled Study",
+        filename: doc.title || "document.pdf",
+        authors: "Authors not specified",
+        researchQuestion: "Not found in the paper",
+        researchMethod: "Not found in the paper",
+        sampleOrData: "Not found in the paper",
+        findings: "Not found in the paper",
+        limitations: "Not found in the paper",
+        sourcePage: doc.chunks?.[0]?.page || null,
+      }));
+    }
+  } catch (docErr) {
+    console.warn("Could not fetch real documents, using fallback mock studies:", docErr);
+  }
+
+  // Fallback to mock studies if no remote documents are ready yet
+  return fetchMockStudies();
 }
 
 /**

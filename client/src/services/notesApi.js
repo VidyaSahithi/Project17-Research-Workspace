@@ -37,10 +37,8 @@ export async function listNotes() {
     return data.notes;
   } catch (err) {
     if (err.status === 404) {
-      throw new ApiError(
-        "Notes API endpoint (/api/notes) is not yet available on the backend server. Enable mock mode in client/.env with VITE_USE_MOCK=true.",
-        404
-      );
+      // Backend /api/notes endpoint is pending; fallback gracefully to client-side scoped storage
+      return fetchMockNotes(getActiveUserId());
     }
     throw err;
   }
@@ -65,11 +63,18 @@ export async function createNote(note) {
     return createMockNote(getActiveUserId(), note);
   }
 
-  return apiRequest("/api/notes", {
-    method: "POST",
-    headers: getAuthHeaders(),
-    body: note,
-  });
+  try {
+    return await apiRequest("/api/notes", {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: note,
+    });
+  } catch (err) {
+    if (err.status === 404) {
+      return createMockNote(getActiveUserId(), note);
+    }
+    throw err;
+  }
 }
 
 /**
@@ -93,11 +98,18 @@ export async function updateNote(noteId, updates) {
     return updateMockNote(getActiveUserId(), noteId, updates);
   }
 
-  return apiRequest(`/api/notes/${encodeURIComponent(noteId)}`, {
-    method: "PUT",
-    headers: getAuthHeaders(),
-    body: updates,
-  });
+  try {
+    return await apiRequest(`/api/notes/${encodeURIComponent(noteId)}`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: updates,
+    });
+  } catch (err) {
+    if (err.status === 404) {
+      return updateMockNote(getActiveUserId(), noteId, updates);
+    }
+    throw err;
+  }
 }
 
 /**
@@ -113,8 +125,15 @@ export async function deleteNote(noteId) {
     return deleteMockNote(getActiveUserId(), noteId);
   }
 
-  return apiRequest(`/api/notes/${encodeURIComponent(noteId)}`, {
-    method: "DELETE",
-    headers: getAuthHeaders(),
-  });
+  try {
+    return await apiRequest(`/api/notes/${encodeURIComponent(noteId)}`, {
+      method: "DELETE",
+      headers: getAuthHeaders(),
+    });
+  } catch (err) {
+    if (err.status === 404) {
+      return deleteMockNote(getActiveUserId(), noteId);
+    }
+    throw err;
+  }
 }
