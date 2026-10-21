@@ -1,21 +1,23 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  login,
-  register,
-  isAuthenticated,
-  getCurrentUser,
-} from "./services/authApi";
 import {
   BrowserRouter,
   Routes,
   Route,
   Navigate,
   Link,
+  useNavigate,
 } from "react-router-dom";
+
+import {
+  login,
+  register,
+  isAuthenticated,
+  getCurrentUser,
+} from "./services/authApi";
 
 import AppLayout from "./layout/AppLayout";
 import Documents from "./pages/Documents";
+import Chat from "./pages/Chat";
 import "./App.css";
 
 // Dashboard page
@@ -88,7 +90,6 @@ function Collections() {
 }
 
 // Login page
-
 function Login() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
@@ -165,9 +166,7 @@ function Login() {
   );
 }
 
-
 // Registration page
-
 function Register() {
   const navigate = useNavigate();
   const [error, setError] = useState("");
@@ -252,7 +251,6 @@ function Register() {
   );
 }
 
-
 // Placeholder for pages being developed by other team members
 function PlaceholderPage({ title, description }) {
   return (
@@ -281,7 +279,8 @@ function NotFound() {
     </div>
   );
 }
-// Protect all routes inside the shared application layout.
+
+// Protect the workspace and validate the saved session.
 function ProtectedLayout() {
   const [status, setStatus] = useState(() =>
     isAuthenticated() ? "checking" : "signed-out"
@@ -340,12 +339,12 @@ function ProtectedLayout() {
 
   return <AppLayout />;
 }
+
 // Main application and routes
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Default route */}
         <Route
           path="/"
           element={<Navigate to="/dashboard" replace />}
@@ -355,33 +354,14 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Shared application layout */}
+        {/* Protected workspace routes */}
         <Route element={<ProtectedLayout />}>
-          <Route
-            path="/dashboard"
-            element={<Dashboard />}
-          />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/documents" element={<Documents />} />
+          <Route path="/collections" element={<Collections />} />
 
-          <Route
-            path="/documents"
-            element={<Documents />}
-          />
-
-          <Route
-            path="/collections"
-            element={<Collections />}
-          />
-
-          {/* M6 - Research Chat */}
-          <Route
-            path="/chat"
-            element={
-              <PlaceholderPage
-                title="Research Chat"
-                description="Chat with your research documents."
-              />
-            }
-          />
+          {/* M6 - Cited Research Chat */}
+          <Route path="/chat" element={<Chat />} />
 
           {/* M7 - Evidence Board */}
           <Route
