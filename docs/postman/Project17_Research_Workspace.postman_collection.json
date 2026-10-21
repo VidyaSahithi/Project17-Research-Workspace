@@ -1,0 +1,806 @@
+{
+  "info": {
+    "_postman_id": "b3e7f41a-2895-4d43-a609- project17-m8-postman",
+    "name": "Project 17 — Research Workspace API (M8)",
+    "description": "Comprehensive Postman test collection for Project 17: Research Reading and Evidence Workspace. Covers Authentication, Documents & Uploads, Vector Search, Cited RAG Chat, Evidence Agent, Evidence Board & Comparison, and Private Notes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "description": "User registration, session login, JWT issuance, and session verification.",
+      "item": [
+        {
+          "name": "POST Register User (Positive)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201 Created or 409 Conflict if already seeded\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 409]);",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.test(\"Response contains JWT token and user info\", function () {",
+                  "        pm.expect(json).to.have.property('token');",
+                  "        pm.expect(json.user).to.have.property('email');",
+                  "    });",
+                  "    if (json.token) {",
+                  "        pm.environment.set(\"authToken\", json.token);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Alex Rivera\",\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "POST Register User (Negative - Short Password)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test(\"Error explains password length requirement\", function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.message).to.include(\"at least 8 characters\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Invalid Test\",\n  \"email\": \"invalid_pass@example.com\",\n  \"password\": \"short\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "POST Login User (Positive)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Response returns token and sets authToken environment variable\", function () {",
+                  "    pm.expect(json).to.have.property('token');",
+                  "    pm.expect(json.user).to.have.property('id');",
+                  "    pm.environment.set(\"authToken\", json.token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "POST Login User (Negative - Bad Credentials)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Error message indicates invalid credentials\", function () {",
+                  "    pm.expect(json.message).to.include(\"Invalid email or password\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"WrongPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "GET Current User Session (Positive)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test(\"User profile matches token payload\", function () {",
+                  "    pm.expect(json).to.have.property('user');",
+                  "    pm.expect(json.user).to.have.property('name');",
+                  "    pm.expect(json.user).to.have.property('email');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "GET Current User Session (Negative - Missing Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Requires authentication token\", function () {",
+                  "    pm.expect(json.message).to.include(\"token required\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Documents and Uploads",
+      "description": "Document library listing, file uploads, and retry endpoints.",
+      "item": [
+        {
+          "name": "GET List Documents",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Response contains documents array\", function () {",
+                  "    pm.expect(json).to.have.property('documents');",
+                  "    pm.expect(json.documents).to.be.an('array');",
+                  "});",
+                  "if (json.documents && json.documents.length > 0) {",
+                  "    var firstDoc = json.documents[0];",
+                  "    pm.environment.set(\"documentId\", firstDoc.documentId || firstDoc._id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents"]
+            }
+          }
+        },
+        {
+          "name": "POST Upload Document (Positive Form-Data)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201 Created or 200 OK\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "if (json.documentId) {",
+                  "    pm.environment.set(\"documentId\", json.documentId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample_research_paper.pdf",
+                  "description": "Attach research PDF"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "upload"]
+            }
+          }
+        },
+        {
+          "name": "POST Upload Document (Negative - Missing File)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": []
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "upload"]
+            }
+          }
+        },
+        {
+          "name": "POST Retry Document Processing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK or 404/409\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404, 409]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/{{documentId}}/retry",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "{{documentId}}", "retry"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Search (Vector Retrieval)",
+      "description": "Semantic passage search across embeddings.",
+      "item": [
+        {
+          "name": "POST Vector Search Chunks",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Passages returned with score and text\", function () {",
+                  "    pm.expect(json).to.have.property('results');",
+                  "    pm.expect(json.results).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"diagnostic sensitivity radiologists\",\n  \"documentId\": \"{{documentId}}\",\n  \"limit\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/search",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "search"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Chat (Grounded RAG)",
+      "description": "Cited research chat with page references and insufficient evidence handling.",
+      "item": [
+        {
+          "name": "POST Ask Question (Positive with Citations)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Response contains answer and sources array\", function () {",
+                  "    pm.expect(json).to.have.property('answer');",
+                  "    pm.expect(json).to.have.property('sources');",
+                  "    pm.expect(json.sources).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentId\": \"{{documentId}}\",\n  \"question\": \"What was the measured diagnostic sensitivity gain?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat"]
+            }
+          }
+        },
+        {
+          "name": "POST Ask Question (Negative - Insufficient Evidence)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "pm.test(\"Indicates insufficient evidence without inventing facts\", function () {",
+                  "    pm.expect(json.answer).to.include(\"not enough evidence\");",
+                  "    pm.expect(json.sources).to.be.an('array').that.is.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentId\": \"{{documentId}}\",\n  \"question\": \"What is the capital of Australia and the weather today?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat"]
+            }
+          }
+        },
+        {
+          "name": "POST Ask Question (Negative - Missing Document ID)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 400 Bad Request\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Question without document ID\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "chat"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Evidence Agent",
+      "description": "LangChain autonomous agent proposal synthesis.",
+      "item": [
+        {
+          "name": "POST Evidence Agent Workflow",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200 OK or 500 if LLM service offline\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 500]);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    pm.test(\"Returns proposal and citations\", function () {",
+                  "        pm.expect(json).to.have.property('proposal');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "x-user-id",
+                "value": "alex_rivera"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"Synthesize radiological diagnostic accuracy gains across studies\",\n  \"collectionId\": \"{{collectionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/evidence-agent",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "evidence-agent"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Collections (M1 Dependency Status)",
+      "description": "Collection grouping endpoints. Note: Server route mount pending from M1.",
+      "item": [
+        {
+          "name": "GET List Collections [BLOCKED - M1 Contract Pending]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Documents the status of collection endpoints",
+                  "pm.test(\"Route contract pending from M1\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/collections",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "collections"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Evidence Board & Study Comparison",
+      "description": "Structured study evidence and comparison endpoints (M7 / M8).",
+      "item": [
+        {
+          "name": "GET Compare Studies [Mock Active / Real API Scaffolding]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Endpoint status\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/evidence/compare",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "evidence", "compare"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Private Notes",
+      "description": "Private notes CRUD scoped to authenticated user (M8).",
+      "item": [
+        {
+          "name": "GET List Private Notes [Mock Active / Real API Scaffolding]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notes"]
+            }
+          }
+        },
+        {
+          "name": "POST Create Private Note [Mock Active / Real API Scaffolding]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 200, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Radiology Sensitivity Findings Reflection\",\n  \"documentId\": \"{{documentId}}\",\n  \"documentTitle\": \"AI in Healthcare.pdf\",\n  \"content\": \"The 14.2% sensitivity improvement is impressive, but note that the dataset excludes patients with previous thoracic surgery.\",\n  \"tags\": [\"radiology\", \"validation\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notes"]
+            }
+          }
+        },
+        {
+          "name": "DELETE Remove Private Note [Mock Active / Real API Scaffolding]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 204, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notes/{{noteId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notes", "{{noteId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

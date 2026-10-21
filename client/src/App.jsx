@@ -19,6 +19,8 @@ import AppLayout from "./layout/AppLayout";
 import Documents from "./pages/Documents";
 import EvidenceBoard from "./pages/EvidenceBoard";
 import Chat from "./pages/Chat";
+import StudyComparison from "./pages/StudyComparison";
+import Notes from "./pages/Notes";
 import "./App.css";
 
 // Dashboard page
@@ -371,26 +373,10 @@ export default function App() {
           />
 
           {/* M8 - Study Comparison */}
-          <Route
-            path="/compare"
-            element={
-              <PlaceholderPage
-                title="Study Comparison"
-                description="Compare research studies and their findings."
-              />
-            }
-          />
+          <Route path="/compare" element={<StudyComparison />} />
 
           {/* M8 - Private Notes */}
-          <Route
-            path="/notes"
-            element={
-              <PlaceholderPage
-                title="Private Notes"
-                description="Keep notes about your research."
-              />
-            }
-          />
+          <Route path="/notes" element={<Notes />} />
         </Route>
 
         {/* Unknown routes */}
