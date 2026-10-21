@@ -1,14 +1,17 @@
 
+import React, { useState } from "react";
 import {
   BrowserRouter,
   Routes,
   Route,
   Navigate,
   Link,
+  useNavigate,
 } from "react-router-dom";
 
 import AppLayout from "./layout/AppLayout";
 import Documents from "./pages/Documents";
+import { register, login } from "./services/authApi";
 import "./App.css";
 
 // Dashboard page
@@ -80,14 +83,28 @@ function Collections() {
   );
 }
 
-// Login page
+// Login page connected to the backend
 function Login() {
-  function handleSubmit(event) {
-    event.preventDefault();
+  const navigate = useNavigate();
 
-    alert(
-      "This is a demo form. Backend authentication has not been connected yet."
-    );
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setMessage("");
+    setLoading(true);
+
+    try {
+      await login({ email, password });
+      navigate("/dashboard");
+    } catch (error) {
+      setMessage(error.message || "Login failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -105,6 +122,8 @@ function Login() {
           type="email"
           placeholder="you@example.com"
           autoComplete="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
           required
         />
 
@@ -115,14 +134,23 @@ function Login() {
           type="password"
           placeholder="Enter your password"
           autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
           required
         />
+
+        {message && (
+          <p role="alert" className="auth-message">
+            {message}
+          </p>
+        )}
 
         <button
           type="submit"
           className="primary-button full-width"
+          disabled={loading}
         >
-          Sign in
+          {loading ? "Signing in..." : "Sign in"}
         </button>
 
         <p className="auth-switch">
@@ -137,14 +165,34 @@ function Login() {
   );
 }
 
-// Registration page
+// Registration page connected to the backend
 function Register() {
-  function handleSubmit(event) {
-    event.preventDefault();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-    alert(
-      "This is a demo form. Backend registration has not been connected yet."
-    );
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setMessage("");
+    setSuccess(false);
+    setLoading(true);
+
+    try {
+      await register({ name, email, password });
+
+      setSuccess(true);
+      setMessage("Registration successful! Your account is ready.");
+      setName("");
+      setEmail("");
+      setPassword("");
+    } catch (error) {
+      setMessage(error.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -153,15 +201,17 @@ function Register() {
         <div className="brand-icon auth-logo">R</div>
 
         <h1>Create your account</h1>
-        <p>Start organizing your research.</p>
+        <p>Join your research workspace.</p>
 
         <label htmlFor="register-name">Full name</label>
         <input
           id="register-name"
           name="name"
           type="text"
-          placeholder="Your name"
+          placeholder="Your full name"
           autoComplete="name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
           required
         />
 
@@ -172,6 +222,8 @@ function Register() {
           type="email"
           placeholder="you@example.com"
           autoComplete="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
           required
         />
 
@@ -180,18 +232,36 @@ function Register() {
           id="register-password"
           name="password"
           type="password"
-          minLength={8}
           placeholder="At least 8 characters"
           autoComplete="new-password"
+          minLength={8}
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
           required
         />
+
+        {message && (
+          <p
+            role={success ? "status" : "alert"}
+            className="auth-message"
+          >
+            {message}
+          </p>
+        )}
 
         <button
           type="submit"
           className="primary-button full-width"
+          disabled={loading}
         >
-          Create account
+          {loading ? "Creating account..." : "Create account"}
         </button>
+
+        {success && (
+          <p className="auth-switch">
+            <Link to="/dashboard">Open your workspace</Link>
+          </p>
+        )}
 
         <p className="auth-switch">
           Already registered? <Link to="/login">Sign in</Link>
