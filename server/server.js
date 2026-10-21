@@ -1,13 +1,12 @@
-
-require("dotenv").config();
+﻿require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
-
 const authRoutes = require("./routes/authRoutes");
 const searchRoutes = require("./routes/search");
 const documentRoutes = require("./routes/documents");
+const chatRoutes = require("./routes/chat");
 
 const app = express();
 
@@ -17,6 +16,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/documents", documentRoutes);
+app.use("/api/chat", chatRoutes);
 
 app.get("/", (req, res) => {
   res.send("Backend server is running!");

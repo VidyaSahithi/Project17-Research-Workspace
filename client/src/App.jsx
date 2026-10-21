@@ -1,10 +1,4 @@
-
-import {
-  login,
-  register,
-  isAuthenticated,
-} from "./services/authApi";
-
+import { useEffect, useState } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -14,10 +8,17 @@ import {
   useNavigate,
 } from "react-router-dom";
 
+import {
+  login,
+  register,
+  isAuthenticated,
+  getCurrentUser,
+} from "./services/authApi";
+
 import AppLayout from "./layout/AppLayout";
 import Documents from "./pages/Documents";
+import Chat from "./pages/Chat";
 import "./App.css";
-
 
 // Dashboard page
 function Dashboard() {
@@ -88,25 +89,30 @@ function Collections() {
   );
 }
 
-
-
-
- // Login page
+// Login page
 function Login() {
   const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setError("");
+    setLoading(true);
 
     const formData = new FormData(event.currentTarget);
-    const email = formData.get("email");
-    const password = formData.get("password");
 
     try {
-      await login({ email, password });
-      navigate("/dashboard");
-    } catch (error) {
-      alert(error.message || "Login failed. Please try again.");
+      await login({
+        email: formData.get("email"),
+        password: formData.get("password"),
+      });
+
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setError(err.message || "Unable to sign in. Please try again.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -138,11 +144,14 @@ function Login() {
           required
         />
 
+        {error && <p role="alert">{error}</p>}
+
         <button
           type="submit"
           className="primary-button full-width"
+          disabled={loading}
         >
-          Sign in
+          {loading ? "Signing in..." : "Sign in"}
         </button>
 
         <p className="auth-switch">
@@ -157,24 +166,31 @@ function Login() {
   );
 }
 
-
- // Registration page
+// Registration page
 function Register() {
   const navigate = useNavigate();
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
+    setError("");
+    setLoading(true);
 
     const formData = new FormData(event.currentTarget);
-    const name = formData.get("name");
-    const email = formData.get("email");
-    const password = formData.get("password");
 
     try {
-      await register({ name, email, password });
-      navigate("/dashboard");
-    } catch (error) {
-      alert(error.message || "Registration failed. Please try again.");
+      await register({
+        name: formData.get("name"),
+        email: formData.get("email"),
+        password: formData.get("password"),
+      });
+
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      setError(err.message || "Unable to register. Please try again.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -217,11 +233,14 @@ function Register() {
           required
         />
 
+        {error && <p role="alert">{error}</p>}
+
         <button
           type="submit"
           className="primary-button full-width"
+          disabled={loading}
         >
-          Create account
+          {loading ? "Creating account..." : "Create account"}
         </button>
 
         <p className="auth-switch">
@@ -231,7 +250,6 @@ function Register() {
     </div>
   );
 }
-
 
 // Placeholder for pages being developed by other team members
 function PlaceholderPage({ title, description }) {
@@ -261,19 +279,72 @@ function NotFound() {
     </div>
   );
 }
-function RequireAuth({ children }) {
-  if (!isAuthenticated()) {
+
+// Protect the workspace and validate the saved session.
+function ProtectedLayout() {
+  const [status, setStatus] = useState(() =>
+    isAuthenticated() ? "checking" : "signed-out"
+  );
+
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    if (!isAuthenticated()) {
+      return () => {
+        active = false;
+      };
+    }
+
+    getCurrentUser()
+      .then((user) => {
+        if (active) {
+          setStatus(user ? "authenticated" : "signed-out");
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(
+            err.message || "Unable to verify your session."
+          );
+          setStatus("error");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (status === "checking") {
+    return <p>Checking your session...</p>;
+  }
+
+  if (status === "signed-out") {
     return <Navigate to="/login" replace />;
   }
 
-  return children;
+  if (status === "error") {
+    return (
+      <div className="content-card" role="alert">
+        <h2>Unable to verify your session</h2>
+        <p>{error}</p>
+        <button onClick={() => window.location.reload()}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  return <AppLayout />;
 }
+
 // Main application and routes
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Default route */}
         <Route
           path="/"
           element={<Navigate to="/dashboard" replace />}
@@ -283,39 +354,14 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Shared application layout */}
-        <Route
-  element={
-    <RequireAuth>
-      <AppLayout />
-    </RequireAuth>
-  }
->
-          <Route
-            path="/dashboard"
-            element={<Dashboard />}
-          />
+        {/* Protected workspace routes */}
+        <Route element={<ProtectedLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/documents" element={<Documents />} />
+          <Route path="/collections" element={<Collections />} />
 
-          <Route
-            path="/documents"
-            element={<Documents />}
-          />
-
-          <Route
-            path="/collections"
-            element={<Collections />}
-          />
-
-          {/* M6 - Research Chat */}
-          <Route
-            path="/chat"
-            element={
-              <PlaceholderPage
-                title="Research Chat"
-                description="Chat with your research documents."
-              />
-            }
-          />
+          {/* M6 - Cited Research Chat */}
+          <Route path="/chat" element={<Chat />} />
 
           {/* M7 - Evidence Board */}
           <Route

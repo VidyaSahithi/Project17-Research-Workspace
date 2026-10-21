@@ -1,4 +1,5 @@
-import mongoose from "mongoose";
+
+const mongoose = require("mongoose");
 
 const chunkSchema = new mongoose.Schema(
   {
@@ -31,7 +32,7 @@ const chunkSchema = new mongoose.Schema(
     embedding: {
       type: [Number],
       required: true
-    } // Vector array matching nomic-embed-text dimensions (768)
+    }
   },
   { timestamps: true }
 );
@@ -41,4 +42,4 @@ chunkSchema.index(
   { unique: true }
 );
 
-export default mongoose.model("Chunk", chunkSchema);
+module.exports = mongoose.model("Chunk", chunkSchema);

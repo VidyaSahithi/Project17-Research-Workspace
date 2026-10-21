@@ -1,7 +1,6 @@
 
 const { extractTextFromPDF } = require("../services/pdfExtractor");
 const { extractTextFromTXT } = require("../services/txtExtractor");
-const { chunkText } = require("../services/textChunker");
 const Document = require("../models/Document");
 const { processDocument } = require("../services/processDocument");
 const path = require("path");
@@ -11,14 +10,20 @@ async function uploadDocument(req, res) {
 
     try {
         if (!req.file) {
-            return res.status(400).json({ message: "No file uploaded" });
+            return res.status(400).json({
+                message: "No file uploaded"
+            });
         }
 
         if (!req.user || !req.user.id) {
-            return res.status(401).json({ message: "Authentication required" });
+            return res.status(401).json({
+                message: "Authentication required"
+            });
         }
 
-        const extension = path.extname(req.file.originalname).toLowerCase();
+        const extension = path.extname(
+            req.file.originalname
+        ).toLowerCase();
 
         if (![".pdf", ".txt"].includes(extension)) {
             return res.status(400).json({
@@ -37,21 +42,29 @@ async function uploadDocument(req, res) {
         let extractedText;
 
         if (extension === ".pdf") {
-            extractedText = await extractTextFromPDF(req.file.path);
+            extractedText = await extractTextFromPDF(
+                req.file.path
+            );
         } else {
-            extractedText = await extractTextFromTXT(req.file.path);
+            extractedText = await extractTextFromTXT(
+                req.file.path
+            );
         }
 
-        if (typeof extractedText !== "string" || !extractedText.trim()) {
-            throw new Error("No readable text found in the uploaded file");
+        if (
+            typeof extractedText !== "string" ||
+            !extractedText.trim()
+        ) {
+            throw new Error(
+                "No readable text found in the uploaded file"
+            );
         }
 
-        // M2: Save extracted text and application-level chunks.
+        // Save extracted text.
         document.extractedText = extractedText;
-        document.chunks = chunkText(extractedText);
         await document.save();
 
-        // M3: Generate embeddings and store searchable Chunk records.
+        // M3 creates chunks, generates embeddings, and stores them.
         await processDocument({
             documentId: document._id,
             ownerId: document.ownerId,
@@ -64,18 +77,19 @@ async function uploadDocument(req, res) {
             ]
         });
 
-        // Mark complete only after both processing steps succeed.
+        // Mark complete only after M3 processing succeeds.
         document.status = "COMPLETED";
         await document.save();
 
         return res.status(201).json({
-            message: "Document uploaded, extracted, and processed successfully",
+            message: "Document uploaded, extracted, and saved successfully",
             documentId: document._id,
             fileName: req.file.originalname,
             ownerId: document.ownerId,
             status: document.status,
             extractedText
         });
+
     } catch (error) {
         console.error("Document upload error:", error);
 
@@ -83,7 +97,10 @@ async function uploadDocument(req, res) {
             document.status = "FAILED";
 
             await document.save().catch(saveError => {
-                console.error("Failed to update document status:", saveError);
+                console.error(
+                    "Failed to update document status:",
+                    saveError
+                );
             });
         }
 
@@ -93,4 +110,6 @@ async function uploadDocument(req, res) {
     }
 }
 
-module.exports = { uploadDocument };
+module.exports = {
+    uploadDocument
+};

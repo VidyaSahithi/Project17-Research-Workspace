@@ -1,11 +1,6 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import {
-  getStoredUser,
-  getToken,
-  logout,
-} from "../services/authApi";
+import { getStoredUser, logout } from "../services/authApi";
 
 const pageNames = {
   "/dashboard": "Dashboard",
@@ -21,38 +16,57 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [user, setUser] = useState(() =>
-    getToken() ? getStoredUser() : null
-  );
+  const [user, setUser] = useState(() => getStoredUser());
 
-  const pageName = pageNames[location.pathname] || "Workspace";
-  const displayName = user?.name || user?.email || "User";
-  const initial = displayName.trim().charAt(0).toUpperCase() || "U";
+  // Refresh the user information when the route changes.
+useEffect(() => {
+  const syncAuth = () => {
+    setUser(getStoredUser());
+  };
 
-  function handleAuthClick() {
+  window.addEventListener("auth-change", syncAuth);
+
+  return () => {
+    window.removeEventListener("auth-change", syncAuth);
+  };
+}, []);
+
+  const pageName =
+    pageNames[location.pathname] || "Workspace";
+
+  function handleAuthButton() {
     if (user) {
       logout();
       setUser(null);
+      navigate("/login");
+    } else {
+      navigate("/login");
     }
-
-    navigate("/login");
   }
+
+  const initial = (
+    user?.name?.trim()?.[0] ||
+    user?.email?.trim()?.[0] ||
+    "U"
+  ).toUpperCase();
 
   return (
     <header className="navbar">
       <div>
-        <p className="breadcrumb">Workspace / {pageName}</p>
+        <p className="breadcrumb">
+          Workspace / {pageName}
+        </p>
         <h1>{pageName}</h1>
       </div>
 
       <div className="navbar-actions">
-        <span className="user-avatar" title={displayName}>
+        <span className="user-avatar" title={user?.name || "Guest"}>
           {initial}
         </span>
 
         <button
           className="logout-button"
-          onClick={handleAuthClick}
+          onClick={handleAuthButton}
         >
           {user ? "Sign out" : "Sign in"}
         </button>
