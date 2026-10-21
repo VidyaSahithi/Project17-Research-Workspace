@@ -2,6 +2,7 @@
 const multer = require("multer");
 const { uploadDocument } = require("../controllers/documentController");
 const { listDocuments } = require("../controllers/documentListController");
+const { retryDocument } = require("../controllers/retryDocumentController");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -15,5 +16,7 @@ router.post(
   upload.single("file"),
   uploadDocument
 );
+
+router.post("/:id/retry", authMiddleware, retryDocument);
 
 module.exports = router;

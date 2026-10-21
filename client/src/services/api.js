@@ -1,9 +1,7 @@
-
-const API_BASE_URL = (
+﻿const API_BASE_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:5000"
 ).replace(/\/+$/, "");
 
-// Keep mock mode enabled until the backend integration is ready.
 export const USE_MOCK =
   (import.meta.env.VITE_USE_MOCK || "true").toLowerCase() === "true";
 
@@ -16,42 +14,93 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Shared request helper for all frontend services.
- *
- * Usage:
- * apiRequest("/api/auth/me")
- * apiRequest("/api/auth/login", {
- *   method: "POST",
- *   body: { email, password },
- * })
- *
- * For file uploads, pass FormData as the body.
- */
+function parseResponse(status, responseText) {
+  let data = null;
+
+  if (status !== 204 && responseText) {
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      data = responseText;
+    }
+  }
+
+  if (status < 200 || status >= 300) {
+    const message =
+      typeof data === "string"
+        ? data
+        : data?.message ||
+          data?.error ||
+          `Request failed with status ${status}.`;
+
+    throw new ApiError(message, status, data);
+  }
+
+  return data;
+}
+
 export async function apiRequest(path, options = {}) {
   if (typeof path !== "string" || !path.startsWith("/")) {
     throw new ApiError("API path must start with '/'.");
   }
 
-  const { body, headers: customHeaders, ...fetchOptions } = options;
+  const {
+    body,
+    headers: customHeaders,
+    onUploadProgress,
+    ...fetchOptions
+  } = options;
+
   const headers = new Headers(customHeaders || {});
-
-  let requestBody = body;
-
   const isFormData =
     typeof FormData !== "undefined" && body instanceof FormData;
 
-  if (
-    body !== undefined &&
-    body !== null &&
-    !isFormData &&
-    typeof body !== "string"
-  ) {
+  let requestBody = body;
+
+  if (body !== undefined && body !== null && !isFormData &&
+      typeof body !== "string") {
     if (!headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
     }
-
     requestBody = JSON.stringify(body);
+  }
+
+  // Use XHR only when actual upload-progress events are needed.
+  if (isFormData && typeof onUploadProgress === "function") {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(fetchOptions.method || "POST", `${API_BASE_URL}${path}`);
+
+      headers.forEach((value, key) => xhr.setRequestHeader(key, value));
+
+      xhr.upload.addEventListener("progress", (event) => {
+        if (event.lengthComputable) {
+          onUploadProgress(
+            Math.round((event.loaded / event.total) * 100)
+          );
+        }
+      });
+
+      xhr.addEventListener("load", () => {
+        try {
+          resolve(parseResponse(xhr.status, xhr.responseText));
+        } catch (error) {
+          reject(error);
+        }
+      });
+
+      xhr.addEventListener("error", () => {
+        reject(new ApiError(
+          "Unable to reach the server. Check your connection and backend."
+        ));
+      });
+
+      xhr.addEventListener("abort", () => {
+        reject(new ApiError("The request was cancelled."));
+      });
+
+      xhr.send(body);
+    });
   }
 
   let response;
@@ -70,30 +119,5 @@ export async function apiRequest(path, options = {}) {
     );
   }
 
-  let data = null;
-
-  if (response.status !== 204) {
-    const responseText = await response.text();
-
-    if (responseText) {
-      try {
-        data = JSON.parse(responseText);
-      } catch {
-        data = responseText;
-      }
-    }
-  }
-
-  if (!response.ok) {
-    const message =
-      typeof data === "string"
-        ? data
-        : data?.message ||
-          data?.error ||
-          `Request failed with status ${response.status}.`;
-
-    throw new ApiError(message, response.status, data);
-  }
-
-  return data;
+  return parseResponse(response.status, await response.text());
 }

@@ -4,8 +4,8 @@ const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
-const searchRoutes = require("./routes/search");
 const documentRoutes = require("./routes/documents");
+const searchRoutes = require("./routes/search");
 const chatRoutes = require("./routes/chat");
 
 const app = express();
@@ -14,8 +14,8 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
-app.use("/api/search", searchRoutes);
 app.use("/api/documents", documentRoutes);
+app.use("/api/search", searchRoutes);
 app.use("/api/chat", chatRoutes);
 
 app.get("/", (req, res) => {

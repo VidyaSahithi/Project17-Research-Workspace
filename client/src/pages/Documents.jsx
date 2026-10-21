@@ -1,19 +1,67 @@
-
-import { useState } from "react";
-import { initialDocuments } from "../mocks/documentsMock";
+﻿import { useCallback, useEffect, useState } from "react";
+import {
+  listDocuments,
+  uploadDocument,
+  retryDocument,
+} from "../services/documentsApi";
 import DocumentCard from "../components/library/DocumentCard";
 import UploadButton from "../components/library/UploadButton";
 import SearchBar from "../components/library/SearchBar";
 import "./Documents.css";
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
+
+function mapDocument(document) {
+  const filename = document.title || "Untitled document";
+  const rawStatus = (document.status || "UPLOADED").toUpperCase();
+
+  const statusMap = {
+    UPLOADED: "processing",
+    PROCESSING: "processing",
+    COMPLETED: "ready",
+    FAILED: "failed",
+  };
+
+  return {
+    id: String(document.documentId || document._id),
+    title: filename.replace(/\.(pdf|txt)$/i, ""),
+    filename,
+    pages: null,
+    size: null,
+    status: statusMap[rawStatus] || "processing",
+    error:
+      rawStatus === "FAILED"
+        ? "Processing failed. Use Retry to try processing the stored file again."
+        : undefined,
+  };
+}
 
 export default function Documents() {
-  const [documents, setDocuments] = useState(initialDocuments);
+  const [documents, setDocuments] = useState([]);
   const [search, setSearch] = useState("");
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState("");
+  const [retryingId, setRetryingId] = useState("");
+  const [retryErrors, setRetryErrors] = useState({});
+
+  const refreshDocuments = useCallback(async () => {
+    try {
+      const remoteDocuments = await listDocuments();
+      setDocuments(remoteDocuments.map(mapDocument));
+      setListError("");
+    } catch (error) {
+      setListError(error.message || "Unable to load your documents.");
+    } finally {
+      setListLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshDocuments();
+  }, [refreshDocuments]);
 
   async function handleFileSelected(file) {
     setUploadError("");
@@ -38,61 +86,47 @@ export default function Documents() {
     setUploading(true);
     setUploadProgress(0);
 
-    // Simulate uploading while using mock mode.
-    for (const progress of [15, 35, 55, 75, 100]) {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      setUploadProgress(progress);
+    try {
+      await uploadDocument(file, (percent) => {
+        // Keep a little room for server-side extraction and embedding.
+        setUploadProgress(Math.min(percent, 95));
+      });
+
+      setUploadProgress(100);
+      await refreshDocuments();
+    } catch (error) {
+      setUploadError(error.message || "Upload failed. Please try again.");
+      // A failed processing attempt may still have created a FAILED record.
+      await refreshDocuments();
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
     }
-
-    const newId = `doc-${Date.now()}`;
-    const newDocument = {
-      id: newId,
-      title: file.name.replace(/\.(pdf|txt)$/i, ""),
-      filename: file.name,
-      pages: null,
-      size: file.size,
-      status: "processing",
-    };
-
-    setDocuments((current) => [newDocument, ...current]);
-    setUploading(false);
-    setUploadProgress(0);
-
-    // Mock processing only; no server request is made yet.
-    setTimeout(() => {
-      setDocuments((current) =>
-        current.map((doc) =>
-          doc.id === newId ? { ...doc, status: "ready" } : doc
-        )
-      );
-    }, 4000);
   }
 
-  function handleRetry(id) {
-    setDocuments((current) =>
-      current.map((doc) =>
-        doc.id === id
-          ? { ...doc, status: "processing", error: undefined }
-          : doc
-      )
-    );
+  async function handleRetry(id) {
+    setRetryingId(id);
+    setRetryErrors((current) => ({ ...current, [id]: "" }));
 
-    // Simulate a successful retry in mock mode.
-    setTimeout(() => {
-      setDocuments((current) =>
-        current.map((doc) =>
-          doc.id === id ? { ...doc, status: "ready" } : doc
-        )
-      );
-    }, 2500);
+    try {
+      await retryDocument(id);
+      await refreshDocuments();
+    } catch (error) {
+      setRetryErrors((current) => ({
+        ...current,
+        [id]: error.message || "Retry failed. Please try again.",
+      }));
+      await refreshDocuments();
+    } finally {
+      setRetryingId("");
+    }
   }
 
-  const filteredDocuments = documents.filter((doc) => {
+  const filteredDocuments = documents.filter((document) => {
     const query = search.trim().toLowerCase();
-
     return (
-      doc.title.toLowerCase().includes(query) ||
-      doc.filename.toLowerCase().includes(query)
+      document.title.toLowerCase().includes(query) ||
+      document.filename.toLowerCase().includes(query)
     );
   });
 
@@ -122,13 +156,13 @@ export default function Documents() {
       {uploading && (
         <div className="upload-progress" role="status">
           <div className="progress-label">
-            <span>Uploading document (demo)</span>
+            <span>Uploading and processing document...</span>
             <span>{uploadProgress}%</span>
           </div>
-
           <div
             className="progress-track"
             role="progressbar"
+            aria-label="File upload progress"
             aria-valuenow={uploadProgress}
             aria-valuemin="0"
             aria-valuemax="100"
@@ -142,22 +176,37 @@ export default function Documents() {
       )}
 
       {uploadError && (
-        <p className="upload-error" role="alert">
-          {uploadError}
-        </p>
+        <p className="upload-error" role="alert">{uploadError}</p>
+      )}
+
+      {listError && (
+        <div className="upload-error" role="alert">
+          <p>{listError}</p>
+          <button type="button" onClick={refreshDocuments}>
+            Retry loading documents
+          </button>
+        </div>
+      )}
+
+      {listLoading && (
+        <p role="status">Loading your documents...</p>
       )}
 
       <div className="document-list">
         {filteredDocuments.map((document) => (
           <DocumentCard
             key={document.id}
-            document={document}
+            document={{
+              ...document,
+              error: retryErrors[document.id] || document.error,
+            }}
             onRetry={handleRetry}
+            retrying={retryingId === document.id}
           />
         ))}
       </div>
 
-      {filteredDocuments.length === 0 && (
+      {!listLoading && !listError && filteredDocuments.length === 0 && (
         <div className="library-empty-state">
           {documents.length === 0 ? (
             <>
@@ -172,11 +221,6 @@ export default function Documents() {
           )}
         </div>
       )}
-
-      <p className="mock-mode-note">
-        Demo mode: uploads and retries are simulated locally.
-        Files are not sent to the backend yet.
-      </p>
     </section>
   );
 }
