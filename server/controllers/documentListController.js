@@ -1,4 +1,4 @@
-﻿const Document = require("../models/Document");
+const Document = require("../models/Document");
 
 async function listDocuments(req, res) {
   try {

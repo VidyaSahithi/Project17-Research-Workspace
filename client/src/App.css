@@ -476,3 +476,44 @@ a {
     padding: 25px;
   }
 }
+
+.workspace-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.workspace-tool form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workspace-tool textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #dfe3ed;
+  border-radius: 8px;
+  font: inherit;
+  resize: vertical;
+}
+
+.workspace-panel {
+  padding: 16px;
+  margin: 12px 0;
+  border: 1px solid #e8ebf2;
+  border-radius: 10px;
+  background: #f8f9fc;
+  overflow-wrap: anywhere;
+}
+
+.workspace-entries {
+  margin-top: 16px;
+}
+
+.workspace-entries article button {
+  padding: 6px 10px;
+  cursor: pointer;
+}
+

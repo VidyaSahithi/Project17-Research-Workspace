@@ -6,33 +6,33 @@ const chunkSchema = new mongoose.Schema(
     documentId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      index: true
+      index: true,
     },
     ownerId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      index: true
+      index: true,
     },
     chunkIndex: {
       type: Number,
-      required: true
+      required: true,
     },
     text: {
       type: String,
-      required: true
+      required: true,
     },
     page: {
       type: Number,
-      default: null
+      default: null,
     },
     section: {
       type: String,
-      default: null
+      default: null,
     },
     embedding: {
       type: [Number],
-      required: true
-    }
+      required: true,
+    },
   },
   { timestamps: true }
 );

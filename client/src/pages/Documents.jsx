@@ -1,8 +1,10 @@
-﻿import { useCallback, useEffect, useState } from "react";
+
+import { useCallback, useEffect, useState } from "react";
 import {
   listDocuments,
   uploadDocument,
   retryDocument,
+  getDocumentFileUrl,
 } from "../services/documentsApi";
 import DocumentCard from "../components/library/DocumentCard";
 import UploadButton from "../components/library/UploadButton";
@@ -12,23 +14,32 @@ import "./Documents.css";
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 function mapDocument(document) {
-  const filename = document.title || "Untitled document";
-  const rawStatus = (document.status || "UPLOADED").toUpperCase();
+  const filename =
+    document.filename ||
+    document.fileName ||
+    document.title ||
+    "document.txt";
+
+  const rawStatus = String(
+    document.status || "UPLOADED"
+  ).toUpperCase();
 
   const statusMap = {
     UPLOADED: "processing",
     PROCESSING: "processing",
     COMPLETED: "ready",
+    READY: "ready",
     FAILED: "failed",
   };
 
   return {
-    id: String(document.documentId || document._id),
+    id: String(document.documentId || document.id || document._id || ""),
     title: filename.replace(/\.(pdf|txt)$/i, ""),
     filename,
-    pages: null,
-    size: null,
+    pages: document.pages || null,
+    size: document.size || null,
     status: statusMap[rawStatus] || "processing",
+    serverBacked: true,
     error:
       rawStatus === "FAILED"
         ? "Processing failed. Use Retry to try processing the stored file again."
@@ -46,14 +57,24 @@ export default function Documents() {
   const [uploadError, setUploadError] = useState("");
   const [retryingId, setRetryingId] = useState("");
   const [retryErrors, setRetryErrors] = useState({});
+  const [openingId, setOpeningId] = useState(null);
 
   const refreshDocuments = useCallback(async () => {
     try {
-      const remoteDocuments = await listDocuments();
+      const result = await listDocuments();
+
+      // Support both API response shapes:
+      // { documents: [...] } and [...]
+      const remoteDocuments = Array.isArray(result)
+        ? result
+        : result?.documents || [];
+
       setDocuments(remoteDocuments.map(mapDocument));
       setListError("");
     } catch (error) {
-      setListError(error.message || "Unable to load your documents.");
+      setListError(
+        error.message || "Unable to load your documents."
+      );
     } finally {
       setListLoading(false);
     }
@@ -66,20 +87,22 @@ export default function Documents() {
   async function handleFileSelected(file) {
     setUploadError("");
 
+    if (!file) return;
+
     const extension = file.name.split(".").pop()?.toLowerCase();
 
     if (!["pdf", "txt"].includes(extension)) {
-      setUploadError("Unsupported file type. Please select a PDF or TXT file.");
+      setUploadError("Please select a PDF or TXT file.");
       return;
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      setUploadError("File exceeds the 20 MB limit. Please choose a smaller file.");
+      setUploadError("File exceeds the 20 MB limit.");
       return;
     }
 
     if (file.size === 0) {
-      setUploadError("This file is empty. Please choose another file.");
+      setUploadError("The selected file is empty.");
       return;
     }
 
@@ -88,15 +111,17 @@ export default function Documents() {
 
     try {
       await uploadDocument(file, (percent) => {
-        // Keep a little room for server-side extraction and embedding.
         setUploadProgress(Math.min(percent, 95));
       });
 
       setUploadProgress(100);
       await refreshDocuments();
     } catch (error) {
-      setUploadError(error.message || "Upload failed. Please try again.");
-      // A failed processing attempt may still have created a FAILED record.
+      setUploadError(
+        `Upload failed: ${error.message || "Please try again."}`
+      );
+
+      // The server may have saved the document before processing failed.
       await refreshDocuments();
     } finally {
       setUploading(false);
@@ -106,7 +131,10 @@ export default function Documents() {
 
   async function handleRetry(id) {
     setRetryingId(id);
-    setRetryErrors((current) => ({ ...current, [id]: "" }));
+    setRetryErrors((current) => ({
+      ...current,
+      [id]: "",
+    }));
 
     try {
       await retryDocument(id);
@@ -116,19 +144,47 @@ export default function Documents() {
         ...current,
         [id]: error.message || "Retry failed. Please try again.",
       }));
+
       await refreshDocuments();
     } finally {
       setRetryingId("");
     }
   }
 
-  const filteredDocuments = documents.filter((document) => {
-    const query = search.trim().toLowerCase();
-    return (
-      document.title.toLowerCase().includes(query) ||
-      document.filename.toLowerCase().includes(query)
-    );
-  });
+  async function handleOpen(document) {
+    setUploadError("");
+    setOpeningId(document.id);
+
+    // Open a tab immediately to reduce popup blocking.
+    const tab = window.open("about:blank", "_blank");
+
+    try {
+      const url = await getDocumentFileUrl(document.id);
+
+      if (tab && !tab.closed) {
+        tab.location.href = url;
+      } else {
+        window.location.href = url;
+      }
+    } catch (error) {
+      if (tab && !tab.closed) {
+        tab.close();
+      }
+
+      setUploadError(
+        `Could not open document: ${error.message}`
+      );
+    } finally {
+      setOpeningId(null);
+    }
+  }
+
+  const query = search.trim().toLowerCase();
+
+  const filteredDocuments = documents.filter((document) =>
+    document.title.toLowerCase().includes(query) ||
+    document.filename.toLowerCase().includes(query)
+  );
 
   return (
     <section className="documents-page">
@@ -136,7 +192,7 @@ export default function Documents() {
         <div>
           <p className="eyebrow">YOUR RESEARCH WORKSPACE</p>
           <h2>My Research Papers</h2>
-          <p>Manage, search, and organize your research documents.</p>
+          <p>Manage, search, and open your research documents.</p>
         </div>
 
         <UploadButton
@@ -147,6 +203,7 @@ export default function Documents() {
 
       <div className="library-toolbar">
         <SearchBar value={search} onChange={setSearch} />
+
         <span className="document-count">
           {filteredDocuments.length}{" "}
           {filteredDocuments.length === 1 ? "document" : "documents"}
@@ -159,13 +216,14 @@ export default function Documents() {
             <span>Uploading and processing document...</span>
             <span>{uploadProgress}%</span>
           </div>
+
           <div
             className="progress-track"
             role="progressbar"
             aria-label="File upload progress"
             aria-valuenow={uploadProgress}
-            aria-valuemin="0"
-            aria-valuemax="100"
+            aria-valuemin={0}
+            aria-valuemax={100}
           >
             <div
               className="progress-fill"
@@ -175,8 +233,14 @@ export default function Documents() {
         </div>
       )}
 
+      {openingId && (
+        <p role="status">Opening document...</p>
+      )}
+
       {uploadError && (
-        <p className="upload-error" role="alert">{uploadError}</p>
+        <p className="upload-error" role="alert">
+          {uploadError}
+        </p>
       )}
 
       {listError && (
@@ -198,29 +262,33 @@ export default function Documents() {
             key={document.id}
             document={{
               ...document,
-              error: retryErrors[document.id] || document.error,
+              error:
+                retryErrors[document.id] || document.error,
             }}
             onRetry={handleRetry}
+            onOpen={handleOpen}
             retrying={retryingId === document.id}
           />
         ))}
       </div>
 
-      {!listLoading && !listError && filteredDocuments.length === 0 && (
-        <div className="library-empty-state">
-          {documents.length === 0 ? (
-            <>
-              <h3>Your library is empty</h3>
-              <p>Upload a PDF or TXT file to get started.</p>
-            </>
-          ) : (
-            <>
-              <h3>No matching documents</h3>
-              <p>Try a different search term.</p>
-            </>
-          )}
-        </div>
-      )}
+      {!listLoading &&
+        !listError &&
+        filteredDocuments.length === 0 && (
+          <div className="library-empty-state">
+            {documents.length === 0 ? (
+              <>
+                <h3>Your library is empty</h3>
+                <p>Upload a PDF or TXT file to get started.</p>
+              </>
+            ) : (
+              <>
+                <h3>No matching documents</h3>
+                <p>Try a different search term.</p>
+              </>
+            )}
+          </div>
+        )}
     </section>
   );
 }

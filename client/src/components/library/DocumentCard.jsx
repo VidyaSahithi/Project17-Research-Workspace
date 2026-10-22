@@ -1,7 +1,16 @@
-﻿import StatusBadge from "./StatusBadge";
 
-export default function DocumentCard({ document, onRetry, retrying = false }) {
-  const fileType = (document.filename || "").split(".").pop().toUpperCase();
+import StatusBadge from "./StatusBadge";
+
+export default function DocumentCard({
+  document,
+  onRetry,
+  onOpen,
+  retrying = false,
+}) {
+  const fileType = (document.filename || "")
+    .split(".")
+    .pop()
+    .toUpperCase();
 
   return (
     <article className="document-row">
@@ -11,6 +20,7 @@ export default function DocumentCard({ document, onRetry, retrying = false }) {
 
       <div className="document-details">
         <h3>{document.title}</h3>
+
         <p>
           {document.pages
             ? `${document.pages} pages`
@@ -20,12 +30,24 @@ export default function DocumentCard({ document, onRetry, retrying = false }) {
         </p>
 
         {document.error && (
-          <p className="document-error" role="alert">{document.error}</p>
+          <p className="document-error" role="alert">
+            {document.error}
+          </p>
         )}
       </div>
 
       <div className="document-actions">
         <StatusBadge status={document.status} />
+
+        {document.serverBacked && onOpen && (
+          <button
+            type="button"
+            className="retry-button"
+            onClick={() => onOpen(document)}
+          >
+            Open
+          </button>
+        )}
 
         {document.status === "failed" && (
           <button

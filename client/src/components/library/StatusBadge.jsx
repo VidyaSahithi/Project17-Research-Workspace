@@ -1,4 +1,4 @@
-﻿const statusLabels = {
+const statusLabels = {
   ready: "Ready",
   COMPLETED: "Ready",
   processing: "Processing",

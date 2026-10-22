@@ -1,4 +1,4 @@
-﻿const mongoose = require("mongoose");
+const mongoose = require("mongoose");
 const path = require("path");
 const Document = require("../models/Document");
 const { extractTextFromPDF } = require("../services/pdfExtractor");

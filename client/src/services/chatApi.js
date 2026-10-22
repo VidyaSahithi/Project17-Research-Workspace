@@ -1,4 +1,4 @@
-﻿import { apiRequest } from "./api";
+import { apiRequest } from "./api";
 import { getAuthHeaders } from "./authApi";
 import { DEMO_DOCUMENT, getMockChatResponse } from "../mocks/chatMock";
 

@@ -1,4 +1,5 @@
-﻿const API_BASE_URL = (
+
+export const API_BASE_URL = (
   import.meta.env.VITE_API_URL || "http://localhost:5000"
 ).replace(/\/+$/, "");
 
@@ -57,21 +58,31 @@ export async function apiRequest(path, options = {}) {
 
   let requestBody = body;
 
-  if (body !== undefined && body !== null && !isFormData &&
-      typeof body !== "string") {
+  if (
+    body !== undefined &&
+    body !== null &&
+    !isFormData &&
+    typeof body !== "string"
+  ) {
     if (!headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
     }
+
     requestBody = JSON.stringify(body);
   }
 
-  // Use XHR only when actual upload-progress events are needed.
+  // Use XMLHttpRequest when upload progress is requested.
   if (isFormData && typeof onUploadProgress === "function") {
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open(fetchOptions.method || "POST", `${API_BASE_URL}${path}`);
+      xhr.open(
+        fetchOptions.method || "POST",
+        `${API_BASE_URL}${path}`
+      );
 
-      headers.forEach((value, key) => xhr.setRequestHeader(key, value));
+      headers.forEach((value, key) => {
+        xhr.setRequestHeader(key, value);
+      });
 
       xhr.upload.addEventListener("progress", (event) => {
         if (event.lengthComputable) {
@@ -90,9 +101,11 @@ export async function apiRequest(path, options = {}) {
       });
 
       xhr.addEventListener("error", () => {
-        reject(new ApiError(
-          "Unable to reach the server. Check your connection and backend."
-        ));
+        reject(
+          new ApiError(
+            "Unable to reach the server. Check your connection and backend."
+          )
+        );
       });
 
       xhr.addEventListener("abort", () => {

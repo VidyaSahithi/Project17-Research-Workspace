@@ -1,4 +1,5 @@
-﻿import { apiRequest } from "./api";
+
+import { apiRequest, API_BASE_URL } from "./api";
 import { getAuthHeaders } from "./authApi";
 
 const DOCUMENTS_ENDPOINT = "/api/documents";
@@ -11,11 +12,15 @@ export async function listDocuments() {
     cache: "no-store",
   });
 
-  if (!data || !Array.isArray(data.documents)) {
-    throw new Error("The document list API returned an invalid response.");
+  if (Array.isArray(data)) {
+    return data;
   }
 
-  return data.documents;
+  if (data && Array.isArray(data.documents)) {
+    return data.documents;
+  }
+
+  throw new Error("The document list API returned an invalid response.");
 }
 
 export async function uploadDocument(file, onProgress) {
@@ -46,6 +51,32 @@ export async function uploadDocument(file, onProgress) {
     body: formData,
     onUploadProgress: onProgress,
   });
+}
+
+export async function getDocumentFileUrl(id) {
+  if (!id) {
+    throw new Error("A document ID is required to open this file.");
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}${DOCUMENTS_ENDPOINT}/${encodeURIComponent(id)}/open`,
+    { headers: getAuthHeaders() }
+  );
+
+  if (!response.ok) {
+    let message = "Could not open document.";
+
+    try {
+      const data = await response.json();
+      message = data.message || message;
+    } catch {
+      // Keep the default error message.
+    }
+
+    throw new Error(message);
+  }
+
+  return URL.createObjectURL(await response.blob());
 }
 
 export async function retryDocument(documentId) {

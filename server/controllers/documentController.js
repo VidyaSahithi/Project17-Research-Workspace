@@ -60,11 +60,12 @@ async function uploadDocument(req, res) {
             );
         }
 
-        // Save extracted text.
         document.extractedText = extractedText;
+
+        // Save extracted text before starting M3 processing.
         await document.save();
 
-        // M3 creates chunks, generates embeddings, and stores them.
+        // M3 handles chunking, embeddings, and storage.
         await processDocument({
             documentId: document._id,
             ownerId: document.ownerId,
@@ -77,7 +78,7 @@ async function uploadDocument(req, res) {
             ]
         });
 
-        // Mark complete only after M3 processing succeeds.
+        // Mark complete only after processing succeeds.
         document.status = "COMPLETED";
         await document.save();
 
@@ -96,7 +97,7 @@ async function uploadDocument(req, res) {
         if (document) {
             document.status = "FAILED";
 
-            await document.save().catch(saveError => {
+            await document.save().catch((saveError) => {
                 console.error(
                     "Failed to update document status:",
                     saveError

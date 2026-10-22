@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const mongoose = require("mongoose");
 const { Ollama } = require("ollama");
 const authMiddleware = require("../middleware/authMiddleware");

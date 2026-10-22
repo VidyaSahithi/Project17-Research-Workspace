@@ -1,4 +1,4 @@
-﻿export const getRAGPrompt = (question, passages) => {
+export const getRAGPrompt = (question, passages) => {
   return `
   You are an AI research assistant. Answer the user's question using ONLY the provided research paper passages below.
 
