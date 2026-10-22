@@ -1,83 +1,93 @@
 
-import { useEffect, useState } from "react";
-import DocumentCard from "../components/library/DocumentCard";
-import UploadButton from "../components/library/UploadButton";
-import SearchBar from "../components/library/SearchBar";
+import { useCallback, useEffect, useState } from "react";
 import {
   listDocuments,
   uploadDocument,
+  retryDocument,
   getDocumentFileUrl,
 } from "../services/documentsApi";
+import DocumentCard from "../components/library/DocumentCard";
+import UploadButton from "../components/library/UploadButton";
+import SearchBar from "../components/library/SearchBar";
 import "./Documents.css";
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
-function mapDocument(doc) {
-  const filename = doc.filename || doc.fileName || doc.title || "document.txt";
-  const rawStatus = String(doc.status || "").toUpperCase();
+function mapDocument(document) {
+  const filename =
+    document.filename ||
+    document.fileName ||
+    document.title ||
+    "document.txt";
 
-  let status = "processing";
+  const rawStatus = String(
+    document.status || "UPLOADED"
+  ).toUpperCase();
 
-  if (["COMPLETED", "READY"].includes(rawStatus)) {
-    status = "ready";
-  } else if (rawStatus === "FAILED") {
-    status = "failed";
-  }
+  const statusMap = {
+    UPLOADED: "processing",
+    PROCESSING: "processing",
+    COMPLETED: "ready",
+    READY: "ready",
+    FAILED: "failed",
+  };
 
   return {
-    id: doc.id || doc.documentId || doc._id,
+    id: String(document.documentId || document.id || document._id || ""),
     title: filename.replace(/\.(pdf|txt)$/i, ""),
     filename,
-    pages: null,
-    size: doc.size || null,
-    status,
+    pages: document.pages || null,
+    size: document.size || null,
+    status: statusMap[rawStatus] || "processing",
     serverBacked: true,
+    error:
+      rawStatus === "FAILED"
+        ? "Processing failed. Use Retry to try processing the stored file again."
+        : undefined,
   };
 }
 
 export default function Documents() {
   const [documents, setDocuments] = useState([]);
   const [search, setSearch] = useState("");
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [retryingId, setRetryingId] = useState("");
+  const [retryErrors, setRetryErrors] = useState({});
   const [openingId, setOpeningId] = useState(null);
 
-  async function refreshDocuments() {
-    const result = await listDocuments();
-    setDocuments((result.documents || []).map(mapDocument));
-  }
+  const refreshDocuments = useCallback(async () => {
+    try {
+      const result = await listDocuments();
+
+      // Support both API response shapes:
+      // { documents: [...] } and [...]
+      const remoteDocuments = Array.isArray(result)
+        ? result
+        : result?.documents || [];
+
+      setDocuments(remoteDocuments.map(mapDocument));
+      setListError("");
+    } catch (error) {
+      setListError(
+        error.message || "Unable to load your documents."
+      );
+    } finally {
+      setListLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let active = true;
-
-    async function loadDocuments() {
-      try {
-        const result = await listDocuments();
-
-        if (active) {
-          setDocuments((result.documents || []).map(mapDocument));
-        }
-      } catch (error) {
-        if (active) {
-          setUploadError(`Could not load documents: ${error.message}`);
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadDocuments();
-
-    return () => {
-      active = false;
-    };
-  }, []);
+    refreshDocuments();
+  }, [refreshDocuments]);
 
   async function handleFileSelected(file) {
     setUploadError("");
+
+    if (!file) return;
 
     const extension = file.name.split(".").pop()?.toLowerCase();
 
@@ -97,28 +107,47 @@ export default function Documents() {
     }
 
     setUploading(true);
+    setUploadProgress(0);
 
     try {
-      const result = await uploadDocument(file);
+      await uploadDocument(file, (percent) => {
+        setUploadProgress(Math.min(percent, 95));
+      });
 
+      setUploadProgress(100);
       await refreshDocuments();
-
-      if (String(result.status || "").toUpperCase() !== "COMPLETED") {
-        setUploadError(
-          "The upload request finished, but document processing is not complete."
-        );
-      }
     } catch (error) {
-      setUploadError(`Upload failed: ${error.message}`);
+      setUploadError(
+        `Upload failed: ${error.message || "Please try again."}`
+      );
 
-      // Refresh in case the backend saved the document before processing failed.
-      try {
-        await refreshDocuments();
-      } catch {
-        // Keep the original upload error visible.
-      }
+      // The server may have saved the document before processing failed.
+      await refreshDocuments();
     } finally {
       setUploading(false);
+      setUploadProgress(0);
+    }
+  }
+
+  async function handleRetry(id) {
+    setRetryingId(id);
+    setRetryErrors((current) => ({
+      ...current,
+      [id]: "",
+    }));
+
+    try {
+      await retryDocument(id);
+      await refreshDocuments();
+    } catch (error) {
+      setRetryErrors((current) => ({
+        ...current,
+        [id]: error.message || "Retry failed. Please try again.",
+      }));
+
+      await refreshDocuments();
+    } finally {
+      setRetryingId("");
     }
   }
 
@@ -126,7 +155,7 @@ export default function Documents() {
     setUploadError("");
     setOpeningId(document.id);
 
-    // Open a tab directly from the user's click to reduce popup blocking.
+    // Open a tab immediately to reduce popup blocking.
     const tab = window.open("about:blank", "_blank");
 
     try {
@@ -142,24 +171,19 @@ export default function Documents() {
         tab.close();
       }
 
-      setUploadError(`Could not open document: ${error.message}`);
+      setUploadError(
+        `Could not open document: ${error.message}`
+      );
     } finally {
       setOpeningId(null);
     }
   }
 
-  function handleRetry() {
-    setUploadError(
-      "Retry processing is not implemented yet. Check the backend error before uploading again."
-    );
-  }
-
   const query = search.trim().toLowerCase();
 
-  const filteredDocuments = documents.filter(
-    (doc) =>
-      doc.title.toLowerCase().includes(query) ||
-      doc.filename.toLowerCase().includes(query)
+  const filteredDocuments = documents.filter((document) =>
+    document.title.toLowerCase().includes(query) ||
+    document.filename.toLowerCase().includes(query)
   );
 
   return (
@@ -187,12 +211,31 @@ export default function Documents() {
       </div>
 
       {uploading && (
-        <p role="status">
-          Uploading and processing document. Please wait…
-        </p>
+        <div className="upload-progress" role="status">
+          <div className="progress-label">
+            <span>Uploading and processing document...</span>
+            <span>{uploadProgress}%</span>
+          </div>
+
+          <div
+            className="progress-track"
+            role="progressbar"
+            aria-label="File upload progress"
+            aria-valuenow={uploadProgress}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className="progress-fill"
+              style={{ width: `${uploadProgress}%` }}
+            />
+          </div>
+        </div>
       )}
 
-      {openingId && <p role="status">Opening document…</p>}
+      {openingId && (
+        <p role="status">Opening document...</p>
+      )}
 
       {uploadError && (
         <p className="upload-error" role="alert">
@@ -200,38 +243,52 @@ export default function Documents() {
         </p>
       )}
 
-      {loading ? (
-        <p>Loading your documents…</p>
-      ) : (
-        <>
-          <div className="document-list">
-            {filteredDocuments.map((document) => (
-              <DocumentCard
-                key={document.id}
-                document={document}
-                onRetry={handleRetry}
-                onOpen={handleOpen}
-              />
-            ))}
-          </div>
-
-          {filteredDocuments.length === 0 && (
-            <div className="library-empty-state">
-              <h3>
-                {documents.length === 0
-                  ? "Your library is empty"
-                  : "No matching documents"}
-              </h3>
-
-              <p>
-                {documents.length === 0
-                  ? "Upload a PDF or TXT file to get started."
-                  : "Try a different search term."}
-              </p>
-            </div>
-          )}
-        </>
+      {listError && (
+        <div className="upload-error" role="alert">
+          <p>{listError}</p>
+          <button type="button" onClick={refreshDocuments}>
+            Retry loading documents
+          </button>
+        </div>
       )}
+
+      {listLoading && (
+        <p role="status">Loading your documents...</p>
+      )}
+
+      <div className="document-list">
+        {filteredDocuments.map((document) => (
+          <DocumentCard
+            key={document.id}
+            document={{
+              ...document,
+              error:
+                retryErrors[document.id] || document.error,
+            }}
+            onRetry={handleRetry}
+            onOpen={handleOpen}
+            retrying={retryingId === document.id}
+          />
+        ))}
+      </div>
+
+      {!listLoading &&
+        !listError &&
+        filteredDocuments.length === 0 && (
+          <div className="library-empty-state">
+            {documents.length === 0 ? (
+              <>
+                <h3>Your library is empty</h3>
+                <p>Upload a PDF or TXT file to get started.</p>
+              </>
+            ) : (
+              <>
+                <h3>No matching documents</h3>
+                <p>Try a different search term.</p>
+              </>
+            )}
+          </div>
+        )}
     </section>
   );
 }

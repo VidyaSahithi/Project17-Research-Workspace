@@ -1,6 +1,6 @@
 export const getRAGPrompt = (question, passages) => {
   return `
-  You are an AI research assistant. Answer the user's question using ONLY the provided research paper passages below. 
+  You are an AI research assistant. Answer the user's question using ONLY the provided research paper passages below.
 
   Rules:
   1. Do not use any outside knowledge or guess.

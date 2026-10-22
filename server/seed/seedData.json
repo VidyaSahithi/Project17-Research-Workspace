@@ -1,0 +1,178 @@
+{
+  "users": [
+    {
+      "name": "Alex Rivera",
+      "email": "student@researchspace.internal",
+      "password": "StudentPassword123!",
+      "role": "student_researcher",
+      "affiliation": "Department of Computer Science & Medicine"
+    },
+    {
+      "name": "Dr. Eleanor Vance",
+      "email": "reviewer@researchspace.internal",
+      "password": "ReviewerPassword123!",
+      "role": "reviewer_supervisor",
+      "affiliation": "Clinical AI Review Board"
+    },
+    {
+      "name": "Prof. Marcus Thorne",
+      "email": "owner@researchspace.internal",
+      "password": "OwnerPassword123!",
+      "role": "collection_owner",
+      "affiliation": "Laboratory for Sustainable Computing & Climate"
+    }
+  ],
+  "collections": [
+    {
+      "title": "Clinical AI Diagnostic Systems",
+      "description": "Evaluation of deep learning vision architectures in diagnostic triage and clinical workflow efficiency.",
+      "ownerEmail": "owner@researchspace.internal"
+    },
+    {
+      "title": "Urban Climate Adaptation Strategies",
+      "description": "Cross-disciplinary studies analyzing microclimatic cooling, albedo manipulation, and green infrastructure.",
+      "ownerEmail": "owner@researchspace.internal"
+    }
+  ],
+  "documents": [
+    {
+      "title": "AI in Healthcare: Diagnostic Accuracy of Deep Learning Models",
+      "filename": "AI in Healthcare.pdf",
+      "filePath": "uploads/ai_in_healthcare_diagnostic_accuracy.pdf",
+      "ownerEmail": "student@researchspace.internal",
+      "status": "COMPLETED",
+      "pages": 14,
+      "chunks": [
+        {
+          "chunkIndex": 0,
+          "page": 1,
+          "section": "Abstract",
+          "text": "Artificial intelligence applications in clinical diagnostics have demonstrated notable capability in processing radiological imaging. This study investigates the quantitative impact of assistive deep convolutional networks on radiologist accuracy and diagnostic throughput.",
+          "startIndex": 0,
+          "endIndex": 242
+        },
+        {
+          "chunkIndex": 1,
+          "page": 4,
+          "section": "Methods & Diagnostic Sensitivity",
+          "text": "In our retrospective comparative cohort across 1,420 multi-center chest radiography scans, diagnostic sensitivity improved by 14.2% (p < 0.01) with AI assistance. Radiologists exhibited a 22% reduction in false-positive nodule identifications.",
+          "startIndex": 243,
+          "endIndex": 490
+        },
+        {
+          "chunkIndex": 2,
+          "page": 5,
+          "section": "Limitations",
+          "text": "The primary limitation was cohort composition: the dataset was restricted to adult patients with no prior thoracic surgeries, and multi-vendor scanner calibration was not fully uniform.",
+          "startIndex": 491,
+          "endIndex": 678
+        }
+      ]
+    },
+    {
+      "title": "Climate Study: Urban Heat Island Mitigation Strategies",
+      "filename": "Climate Study.pdf",
+      "filePath": "uploads/climate_study_urban_heat_island.pdf",
+      "ownerEmail": "student@researchspace.internal",
+      "status": "COMPLETED",
+      "pages": 20,
+      "chunks": [
+        {
+          "chunkIndex": 0,
+          "page": 2,
+          "section": "Introduction & Methodology",
+          "text": "Urban heat islands exacerbate energy demand and thermal mortality in dense metropolitan areas. We deployed 48 satellite-calibrated microclimatic sensor nodes across 12 urban districts over a 24-month monitoring horizon.",
+          "startIndex": 0,
+          "endIndex": 222
+        },
+        {
+          "chunkIndex": 1,
+          "page": 7,
+          "section": "Results & Findings",
+          "text": "High-albedo reflective surface coatings reduced localized daytime peak surface temperatures by 1.8°C, while contiguous vegetative canopies decreased nocturnal thermal retention by up to 2.4°C.",
+          "startIndex": 223,
+          "endIndex": 418
+        },
+        {
+          "chunkIndex": 2,
+          "page": 9,
+          "section": "Study Limitations",
+          "text": "Unexpected precipitation anomalies during year two altered vegetative transpiration baselines. Winter heating penalties from increased reflectivity were not quantitatively modeled in this phase.",
+          "startIndex": 419,
+          "endIndex": 613
+        }
+      ]
+    },
+    {
+      "title": "Transformer Architectures for Longitudinal Clinical Records",
+      "filename": "Clinical Transformers.pdf",
+      "filePath": "uploads/clinical_transformers_longitudinal.pdf",
+      "ownerEmail": "student@researchspace.internal",
+      "status": "COMPLETED",
+      "pages": 16,
+      "chunks": [
+        {
+          "chunkIndex": 0,
+          "page": 1,
+          "section": "Introduction",
+          "text": "Electronic Health Record (EHR) text contains critical unstructured narrative evidence. We fine-tuned bidirectional clinical transformers to predict 30-day unplanned hospital readmission across 28,500 patient encounters.",
+          "startIndex": 0,
+          "endIndex": 223
+        },
+        {
+          "chunkIndex": 1,
+          "page": 6,
+          "section": "Findings",
+          "text": "The transformer model achieved an AUROC of 0.86, substantially outperforming standard gradient-boosted trees (0.74). High-risk cardiovascular re-admissions were flagged on average 48 hours earlier during hospital stays.",
+          "startIndex": 224,
+          "endIndex": 444
+        },
+        {
+          "chunkIndex": 2,
+          "page": 12,
+          "section": "Discussion",
+          "text": "Deployment across heterogeneous EHR vendors requires standardized HL7 FHIR text ingestion pipelines to prevent format-induced embedding drift.",
+          "startIndex": 445,
+          "endIndex": 591
+        }
+      ]
+    }
+  ],
+  "researchQuestions": [
+    {
+      "question": "What is the measured diagnostic sensitivity gain when radiologists utilize AI assistance?",
+      "targetDocument": "AI in Healthcare: Diagnostic Accuracy of Deep Learning Models",
+      "expectedCitationPage": 4
+    },
+    {
+      "question": "How do reflective surfaces compare to urban tree canopies in mitigating localized heat?",
+      "targetDocument": "Climate Study: Urban Heat Island Mitigation Strategies",
+      "expectedCitationPage": 7
+    },
+    {
+      "question": "What AUROC performance did clinical transformers achieve in predicting 30-day readmissions?",
+      "targetDocument": "Transformer Architectures for Longitudinal Clinical Records",
+      "expectedCitationPage": 6
+    }
+  ],
+  "evidenceEntries": [
+    {
+      "studyQuestion": "How does deep neural network assistance impact diagnostic sensitivity and turnaround time in clinical radiology?",
+      "methods": "Double-blind retrospective comparative cohort study evaluating 50 board-certified radiologists with and without AI triage assistance.",
+      "findings": "Diagnostic sensitivity increased by 14.2% (p < 0.01) with a 22% reduction in false-positive nodules and 6-minute average decrease in triage time.",
+      "limitations": "Dataset was limited to adult patients with no prior thoracic surgeries; multi-vendor scanner calibration was not fully uniform.",
+      "sourcePage": 4,
+      "status": "APPROVED",
+      "reviewerComments": "Statistically sound methodology. Confirms hypothesis for adult radiological triage."
+    },
+    {
+      "studyQuestion": "What is the relative cooling efficacy of reflective roofing compared to urban green canopy interventions in temperate metropolitan zones?",
+      "methods": "Longitudinal micro-climatic satellite sensor monitoring paired with numerical thermal simulation modeling over a 24-month span.",
+      "findings": "High-albedo reflective materials reduced localized ambient peak temperatures by 1.8°C; green corridors lowered night heat retention by 2.4°C.",
+      "limitations": "Precipitation anomalies in year 2 slightly altered vegetative transpiration rates; winter thermal penalty was not evaluated.",
+      "sourcePage": 7,
+      "status": "APPROVED",
+      "reviewerComments": "Excellent longitudinal field data. Suggest follow-up on winter heating penalty."
+    }
+  ]
+}

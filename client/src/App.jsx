@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -7,14 +7,24 @@ import {
   Navigate,
   Link,
   useNavigate,
+  Outlet,
 } from "react-router-dom";
+
+import {
+  login,
+  register,
+  isAuthenticated,
+  getCurrentUser,
+} from "./services/authApi";
 
 import AppLayout from "./layout/AppLayout";
 import Documents from "./pages/Documents";
-import { register, login } from "./services/authApi";
+import EvidenceBoard from "./pages/EvidenceBoard";
+import Chat from "./pages/Chat";
+import StudyComparison from "./pages/StudyComparison";
+import Notes from "./pages/Notes";
 import "./App.css";
 
-// Dashboard page
 function Dashboard() {
   return (
     <div>
@@ -25,7 +35,6 @@ function Dashboard() {
           Organize research papers, explore evidence, and manage
           your reading in one place.
         </p>
-
         <Link to="/documents" className="primary-button">
           Explore documents →
         </Link>
@@ -39,13 +48,11 @@ function Dashboard() {
           <strong>0</strong>
           <small>Documents in your library</small>
         </div>
-
         <div className="stat-card">
           <span>Collections</span>
           <strong>0</strong>
           <small>Organized research groups</small>
         </div>
-
         <div className="stat-card">
           <span>Ready to read</span>
           <strong>0</strong>
@@ -59,7 +66,6 @@ function Dashboard() {
           Upload a research paper to begin building your
           personal research library.
         </p>
-
         <Link to="/documents" className="text-link">
           Go to Document Library →
         </Link>
@@ -68,13 +74,11 @@ function Dashboard() {
   );
 }
 
-// Collections page
 function Collections() {
   return (
     <div className="content-card">
       <h2>Collections</h2>
       <p>Group and organize your research papers.</p>
-
       <div className="empty-state">
         <h3>No collections yet</h3>
         <p>Your research collections will appear here.</p>
@@ -83,10 +87,8 @@ function Collections() {
   );
 }
 
-// Login page connected to the backend
 function Login() {
   const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -99,7 +101,7 @@ function Login() {
 
     try {
       await login({ email, password });
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } catch (error) {
       setMessage(error.message || "Login failed. Please try again.");
     } finally {
@@ -111,7 +113,6 @@ function Login() {
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
         <div className="brand-icon auth-logo">R</div>
-
         <h1>Welcome back</h1>
         <p>Sign in to your research workspace.</p>
 
@@ -156,7 +157,6 @@ function Login() {
         <p className="auth-switch">
           New here? <Link to="/register">Create an account</Link>
         </p>
-
         <p>
           <Link to="/dashboard">Return to dashboard</Link>
         </p>
@@ -165,8 +165,8 @@ function Login() {
   );
 }
 
-// Registration page connected to the backend
 function Register() {
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -182,14 +182,15 @@ function Register() {
 
     try {
       await register({ name, email, password });
-
       setSuccess(true);
       setMessage("Registration successful! Your account is ready.");
       setName("");
       setEmail("");
       setPassword("");
     } catch (error) {
-      setMessage(error.message || "Registration failed. Please try again.");
+      setMessage(
+        error.message || "Registration failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -199,7 +200,6 @@ function Register() {
     <div className="auth-page">
       <form className="auth-card" onSubmit={handleSubmit}>
         <div className="brand-icon auth-logo">R</div>
-
         <h1>Create your account</h1>
         <p>Join your research workspace.</p>
 
@@ -259,7 +259,13 @@ function Register() {
 
         {success && (
           <p className="auth-switch">
-            <Link to="/dashboard">Open your workspace</Link>
+            <button
+              type="button"
+              className="text-link"
+              onClick={() => navigate("/login")}
+            >
+              Continue to sign in
+            </button>
           </p>
         )}
 
@@ -271,162 +277,11 @@ function Register() {
   );
 }
 
-// Placeholder for pages being developed by other team members
-
-function PlaceholderPage({ title, description }) {
-  const [items, setItems] = useState([]);
-  const [input, setInput] = useState("");
-  const [answer, setAnswer] = useState("");
-
-  function handleAdd(event) {
-    event.preventDefault();
-    const value = input.trim();
-    if (!value) return;
-
-    setItems((previous) => [
-      ...previous,
-      {
-        id: Date.now(),
-        text: value,
-      },
-    ]);
-
-    setInput("");
-  }
-
-  const isChat = title === "Research Chat";
-  const isEvidence = title === "Evidence Board";
-  const isCompare = title === "Study Comparison";
-  const isNotes = title === "Private Notes";
-
-  return (
-    <section className="content-card workspace-tool">
-      <p className="eyebrow">PROJECT 17 WORKSPACE</p>
-      <h2>{title}</h2>
-      <p>{description}</p>
-
-      {isChat && (
-        <>
-          <div className="workspace-panel">
-            {answer ? (
-              <p>{answer}</p>
-            ) : (
-              <p>
-                Ask a research question. AI integration is the next step.
-              </p>
-            )}
-          </div>
-
-          <form onSubmit={(event) => {
-            event.preventDefault();
-            if (!input.trim()) return;
-            setAnswer(
-              "Your question: " + input.trim() +
-              ". Connect the evidence-agent API to generate a research answer with citations."
-            );
-            setInput("");
-          }}>
-            <label htmlFor="research-question">Your question</label>
-            <textarea
-              id="research-question"
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="Ask about your research..."
-              rows={3}
-              required
-            />
-            <button className="primary-button" type="submit">
-              Submit question
-            </button>
-          </form>
-        </>
-      )}
-
-      {(isEvidence || isNotes || isCompare) && (
-        <>
-          <form onSubmit={handleAdd} className="workspace-form">
-            <label htmlFor="workspace-entry">
-              {isEvidence
-                ? "Evidence statement"
-                : isNotes
-                  ? "Research note"
-                  : "Study details"}
-            </label>
-
-            <textarea
-              id="workspace-entry"
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder={
-                isEvidence
-                  ? "Record a finding or supporting evidence..."
-                  : isNotes
-                    ? "Write your research notes..."
-                    : "Enter a study title, method, or finding..."
-              }
-              rows={3}
-              required
-            />
-
-            <button className="primary-button" type="submit">
-              {isEvidence
-                ? "Add evidence"
-                : isNotes
-                  ? "Save note"
-                  : "Add study"}
-            </button>
-          </form>
-
-          <div className="workspace-entries">
-            <h3>
-              {isEvidence
-                ? "Evidence entries"
-                : isNotes
-                  ? "Your notes"
-                  : "Studies to compare"}
-            </h3>
-
-            {items.length === 0 ? (
-              <p>Your entries will appear here.</p>
-            ) : (
-              items.map((item, index) => (
-                <article className="workspace-panel" key={item.id}>
-                  <p>{isCompare ? `Study ${index + 1}` : `Entry ${index + 1}`}</p>
-                  <p>{item.text}</p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setItems((previous) =>
-                        previous.filter((entry) => entry.id !== item.id)
-                      )
-                    }
-                  >
-                    Remove
-                  </button>
-                </article>
-              ))
-            )}
-
-            {isCompare && items.length >= 2 && (
-              <p>
-                Both study entries are available above for side-by-side review.
-              </p>
-            )}
-          </div>
-        </>
-      )}
-    </section>
-  );
-}
-
-
-// 404 page
 function NotFound() {
   return (
     <div className="content-card">
       <h2>Page not found</h2>
       <p>The page you requested does not exist.</p>
-
       <Link to="/dashboard" className="text-link">
         Return to dashboard
       </Link>
@@ -434,84 +289,82 @@ function NotFound() {
   );
 }
 
-// Main application and routes
+function ProtectedLayout() {
+  const [status, setStatus] = useState(() =>
+    isAuthenticated() ? "checking" : "signed-out"
+  );
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    if (!isAuthenticated()) {
+      return () => {
+        active = false;
+      };
+    }
+
+    getCurrentUser()
+      .then((user) => {
+        if (active) {
+          setStatus(user ? "authenticated" : "signed-out");
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err.message || "Unable to verify your session.");
+          setStatus("error");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (status === "checking") {
+    return <p>Checking your session...</p>;
+  }
+
+  if (status === "signed-out") {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (status === "error") {
+    return (
+      <div className="content-card" role="alert">
+        <h2>Unable to verify your session</h2>
+        <p>{error}</p>
+        <button onClick={() => window.location.reload()}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  return <Outlet />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Default route */}
-        <Route
-          path="/"
-          element={<Navigate to="/dashboard" replace />}
-        />
-
-        {/* Public authentication routes */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* Shared application layout */}
-        <Route element={<AppLayout />}>
-          <Route
-            path="/dashboard"
-            element={<Dashboard />}
-          />
-
-          <Route
-            path="/documents"
-            element={<Documents />}
-          />
-
-          <Route
-            path="/collections"
-            element={<Collections />}
-          />
-
-          {/* M6 - Research Chat */}
-          <Route
-            path="/chat"
-            element={
-              <PlaceholderPage
-                title="Research Chat"
-                description="Chat with your research documents."
-              />
-            }
-          />
-
-          {/* M7 - Evidence Board */}
-          <Route
-            path="/evidence"
-            element={
-              <PlaceholderPage
-                title="Evidence Board"
-                description="Collect evidence and organize reviewer comments."
-              />
-            }
-          />
-
-          {/* M8 - Study Comparison */}
-          <Route
-            path="/compare"
-            element={
-              <PlaceholderPage
-                title="Study Comparison"
-                description="Compare research studies and their findings."
-              />
-            }
-          />
-
-          {/* M8 - Private Notes */}
-          <Route
-            path="/notes"
-            element={
-              <PlaceholderPage
-                title="Private Notes"
-                description="Keep notes about your research."
-              />
-            }
-          />
+        <Route element={<ProtectedLayout />}>
+          <Route element={<AppLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/documents" element={<Documents />} />
+            <Route path="/collections" element={<Collections />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/evidence" element={<EvidenceBoard />} />
+            <Route path="/compare" element={<StudyComparison />} />
+            <Route path="/notes" element={<Notes />} />
+          </Route>
         </Route>
 
-        {/* Unknown routes */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
